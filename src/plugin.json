@@ -1,0 +1,8 @@
+{
+  "Id": "ee.liikane.openrgb.bloody-p93",
+  "Name": "Bloody P93 RGB Bridge",
+  "VersionStr": "0.1.1",
+  "Commit": "experimental",
+  "Url": "https://github.com/liikane/openrgb-bloody-p93",
+  "OpenRGBPluginAPIVersion": 5
+}

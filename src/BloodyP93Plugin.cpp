@@ -10,7 +10,7 @@ OpenRGBPluginInfo BloodyP93Plugin::GetPluginInfo()
     OpenRGBPluginInfo info{};
     info.Name = "Bloody P93 RGB Bridge";
     info.Description = "Experimental Windows HID RGB support for Bloody P93 (09DA:31DE)";
-    info.Version = "0.1.0";
+    info.Version = "0.1.1";
     info.Commit = "community-preview";
     info.URL = "https://github.com/liikane/openrgb-bloody-p93";
     info.Location = OPENRGB_PLUGIN_LOCATION_SETTINGS;
@@ -93,7 +93,7 @@ void BloodyP93Plugin::RegisterDevice()
     setup.location = "HID 09DA:31DE MI_02 COL04";
     setup.name = "Bloody P93 (community)";
     setup.vendor = "Bloody";
-    setup.version = "0.1.0";
+    setup.version = "0.1.1";
     setup.active_mode = 0;
     setup.type = DEVICE_TYPE_MOUSE;
     setup.flags = CONTROLLER_FLAG_VIRTUAL;
