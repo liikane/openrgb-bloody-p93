@@ -1,0 +1,39 @@
+name: Build OpenRGB 1.1 plugin
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: 'win64_msvc2022_64'
+          cache: true
+      - name: Fetch matching OpenRGB 1.1 headers
+        shell: pwsh
+        run: git clone --depth 1 --branch release_1.1 https://github.com/CalcProgrammer1/OpenRGB.git openrgb
+      - name: Build plugin DLL
+        shell: pwsh
+        run: |
+          $env:OPENRGB_SOURCE_DIR = Join-Path $PWD 'openrgb'
+          qmake OpenRGBBloodyP93Plugin.pro
+          if ($LASTEXITCODE -ne 0) { throw 'qmake failed' }
+          nmake
+          if ($LASTEXITCODE -ne 0) { throw 'nmake failed' }
+          if (-not (Test-Path 'dist/OpenRGBBloodyP93Plugin.dll')) { throw 'DLL not found' }
+      - name: Upload experimental DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenRGB-Bloody-P93-Windows-x64-experimental
+          path: dist/OpenRGBBloodyP93Plugin.dll
+          if-no-files-found: error
