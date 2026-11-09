@@ -6,7 +6,7 @@ Windowsi masinal LAURIDELL on juba edukalt testitud otse-HID käsud: lilla püsi
 
 ## Kasutamine pärast DLL-i edukat ehitamist
 
-1. Laadi GitHub Actionsi edukalt lõppenud ehitusest DLL `OpenRGBBloodyP93Plugin.dll`.
+1. Laadi [GitHubi avalikust katseversioonist v0.1.1-alpha.1](https://github.com/liikane/openrgb-bloody-p93/releases/tag/v0.1.1-alpha.1) DLL `OpenRGBBloodyP93Plugin.dll`.
 2. Paigalda see OpenRGB pluginate halduris.
 3. Ava **Bloody P93 RGB Bridge** seaded.
 4. Lülita sisse **Enable RGB control (experimental)**.

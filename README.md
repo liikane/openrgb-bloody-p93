@@ -33,7 +33,7 @@ A real Bloody P93 on Windows was tested. The standard OpenRGB release did not re
 
 ## Installation (after a successful build)
 
-1. Use the DLL from a successful [GitHub Actions](../../actions/workflows/build-windows.yml) run; **do not download an unverified executable**.
+1. Download the experimental DLL from [v0.1.1-alpha.1](https://github.com/liikane/openrgb-bloody-p93/releases/tag/v0.1.1-alpha.1) (SHA-256 is provided in the release notes).
 2. Make sure you use **OpenRGB 1.1** on Windows x64; stop other utilities from changing the mouse lighting at the same moment.
 3. Open OpenRGB's plugin manager and install `OpenRGBBloodyP93Plugin.dll` (or place the DLL in the configured plugins directory, then restart OpenRGB).
 4. Find **Bloody P93 RGB Bridge** under the plugin settings. The mouse should appear as **Bloody P93 (community)** when connected.
@@ -72,4 +72,4 @@ The source code is **GPL-2.0-or-later**. The project is independently maintained
 
 ## Project status
 
-**Experimental source release:** not yet accepted into the official OpenRGB plugin catalog. Check GitHub Actions build status and the Releases page for tested downloads.
+**Experimental pre-release v0.1.1-alpha.1:** the DLL compiles and has been loaded by OpenRGB 1.1 on Windows, where the application log confirms device registration. The GUI color-picker test remains pending. This plugin is **not yet listed in the official OpenRGB catalog**.
