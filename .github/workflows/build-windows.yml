@@ -1,4 +1,4 @@
-name: Build OpenRGB 1.1 plugin
+name: Build and test OpenRGB 1.1 plugin
 
 on:
   push:
@@ -14,6 +14,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ilammy/msvc-dev-cmd@v1
+      - name: Test HID RGB packet encoder (no hardware access)
+        shell: pwsh
+        run: |
+          cl.exe /nologo /std:c++17 /EHsc /W4 /WX /Od tests\P93ProtocolTest.cpp /Fe:P93ProtocolTest.exe
+          if ($LASTEXITCODE -ne 0) { throw 'C++ test compilation failed' }
+          & .\P93ProtocolTest.exe
+          if ($LASTEXITCODE -ne 0) { throw 'HID protocol tests failed' }
       - uses: jurplel/install-qt-action@v4
         with:
           version: '6.8.3'
@@ -21,7 +28,9 @@ jobs:
           cache: true
       - name: Fetch matching OpenRGB 1.1 headers
         shell: pwsh
-        run: git clone --depth 1 --branch release_1.1 https://github.com/CalcProgrammer1/OpenRGB.git openrgb
+        run: |
+          git clone --depth 1 --branch release_1.1 https://github.com/CalcProgrammer1/OpenRGB.git openrgb
+          if ($LASTEXITCODE -ne 0) { throw 'OpenRGB 1.1 header download failed' }
       - name: Build plugin DLL
         shell: pwsh
         run: |
@@ -34,6 +43,6 @@ jobs:
       - name: Upload experimental DLL
         uses: actions/upload-artifact@v4
         with:
-          name: OpenRGB-Bloody-P93-Windows-x64-experimental
+          name: OpenRGB-Bloody-P93-Windows-x64
           path: dist/OpenRGBBloodyP93Plugin.dll
           if-no-files-found: error
