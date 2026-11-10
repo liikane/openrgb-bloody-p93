@@ -92,3 +92,9 @@ The plugin is **experimental** and initially supports only the precise Bloody P9
 A known working v0.1.1 prerelease demonstrated that the GUI color picker changes P93 lighting and mouse buttons still work. The new multi-slot/notification features require testing before being described as hardware-verified.
 
 Public project and source: GPL-2.0-or-later. [Issue for the eventual official OpenRGB plugin-gallery listing](https://github.com/liikane/openrgb-bloody-p93/issues/1).
+
+## v0.2.1: Settings persist after restart
+
+OpenRGB now remembers the **Enable RGB control** setting, the last 15 configured slot colors, beacon group A/B mappings, flash interval, and the local notification listener opt-in. The beacon **does not automatically start flashing** after restarting OpenRGB; enable it when needed. The local notification listener uses Windows Winsock (no Qt Network runtime DLL required) and is bound to loopback only.
+
+Preferences are stored locally in the user profile with Qt QSettings (INI format). Unchecking **Enable RGB control** also saves the disabled state. The plugin re-enables control at startup only if a matching mouse is connected and the prior user preference was enabled. This release is a community preview; test against the physical P93 before declaring full compatibility.

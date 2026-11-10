@@ -1,3 +1,7 @@
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#endif
 #include "BloodyP93Plugin.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -5,17 +9,35 @@
 #include <QFont>
 #include <QPushButton>
 #include <QCheckBox>
-#include <QHostAddress>
-#include <QRegularExpression>
+#include <QSettings>
+#include <QVariant>
+#include <QStringList>
 #include <QSet>
 #include <QSignalBlocker>
+#include <array>
+
+namespace
+{
+QVariant LoadSetting(const char* key, const QVariant& fallback)
+{
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "liikane", "OpenRGBBloodyP93Plugin");
+    return settings.value(QString::fromLatin1(key), fallback);
+}
+
+void SaveSetting(const char* key, const QVariant& value)
+{
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "liikane", "OpenRGBBloodyP93Plugin");
+    settings.setValue(QString::fromLatin1(key), value);
+    settings.sync();
+}
+}
 
 OpenRGBPluginInfo BloodyP93Plugin::GetPluginInfo()
 {
     OpenRGBPluginInfo info{};
     info.Name = "Bloody P93 RGB Bridge";
     info.Description = "Bloody P93 RGB lighting, per-slot colors and flashing beacon (09DA:31DE)";
-    info.Version = "0.2.0";
+    info.Version = "0.2.1";
     info.Commit = "community";
     info.URL = "https://github.com/liikane/openrgb-bloody-p93";
     info.Location = OPENRGB_PLUGIN_LOCATION_SETTINGS;
@@ -105,10 +127,20 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
         ApplyColor();
     });
 
-    notification_socket_ = new QUdpSocket(this);
-    connect(notification_socket_, &QUdpSocket::readyRead, this, [this]{ HandleNotification(); });
+    notification_poller_ = new QTimer(this);
+    notification_poller_->setInterval(60);
+    connect(notification_poller_, &QTimer::timeout, this, [this]{ HandleNotification(); });
+
+    color_persistence_timer_ = new QTimer(this);
+    color_persistence_timer_->setSingleShot(true);
+    color_persistence_timer_->setInterval(700);
+    connect(color_persistence_timer_, &QTimer::timeout, this, [this]{
+        if(!pending_colors_.isEmpty())
+            SaveSetting("lastColors", pending_colors_);
+    });
 
     connect(enable_, &QCheckBox::toggled, this, [this](bool value){
+        SaveSetting("rgbEnabled", value);
         enabled_.store(value);
         beacon_->setEnabled(value);
         notifications_->setEnabled(value);
@@ -128,6 +160,7 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
 
     connect(interval_, qOverload<int>(&QSpinBox::valueChanged), this, [this](int val){
         beacon_timer_->setInterval(val);
+        SaveSetting("intervalMs", val);
     });
 
     connect(beacon_, &QCheckBox::toggled, this, [this](bool checked){
@@ -169,13 +202,13 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
     });
 
     connect(notifications_, &QCheckBox::toggled, this, [this](bool enabled){
+        SaveSetting("notificationsEnabled", enabled);
         if(!enabled)
         {
-            notification_socket_->close();
+            StopNotificationListener();
             return;
         }
-        if(!enabled_.load() ||
-           !notification_socket_->bind(QHostAddress::LocalHost, 45893, QUdpSocket::DontShareAddress))
+        if(!enabled_.load() || !StartNotificationListener())
         {
             notifications_->setChecked(false);
             status_->setText("Could not listen on 127.0.0.1:45893 (port unavailable).");
@@ -207,7 +240,25 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
         }
     });
 
+    // Restore preferences only after signals and the controller are registered.
+    // On first installation, RGB control remains off until the user opts in.
+    left_slots_->setText(LoadSetting("groupA", QStringLiteral("1,2,3,4,5,6,7")).toString());
+    right_slots_->setText(LoadSetting("groupB", QStringLiteral("8,9,10,11,12,13,14,15")).toString());
+    interval_->setValue(LoadSetting("intervalMs", 320).toInt());
+    connect(left_slots_, &QLineEdit::editingFinished, this, [this]{
+        SaveSetting("groupA", left_slots_->text().trimmed());
+    });
+    connect(right_slots_, &QLineEdit::editingFinished, this, [this]{
+        SaveSetting("groupB", right_slots_->text().trimmed());
+    });
+
     RegisterDevice();
+    if(enable_->isEnabled() && LoadSetting("rgbEnabled", false).toBool())
+    {
+        enable_->setChecked(true);
+        if(LoadSetting("notificationsEnabled", false).toBool())
+            notifications_->setChecked(true);
+    }
 }
 
 bool BloodyP93Plugin::ParseGroups(std::vector<std::size_t>& left,
@@ -258,28 +309,93 @@ void BloodyP93Plugin::TickBeacon()
     }
 }
 
+bool BloodyP93Plugin::StartNotificationListener()
+{
+#ifdef _WIN32
+    if(notification_socket_handle_ != ~std::uintptr_t{0})
+        return true;
+
+    WSADATA winsock{};
+    if(WSAStartup(MAKEWORD(2, 2), &winsock) != 0)
+        return false;
+
+    const SOCKET socketHandle = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if(socketHandle == INVALID_SOCKET)
+    {
+        WSACleanup();
+        return false;
+    }
+    u_long nonblocking = 1;
+    sockaddr_in address{};
+    address.sin_family = AF_INET;
+    address.sin_port = htons(45893);
+    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    if(ioctlsocket(socketHandle, FIONBIO, &nonblocking) != 0 ||
+       bind(socketHandle, reinterpret_cast<const sockaddr*>(&address), sizeof(address)) == SOCKET_ERROR)
+    {
+        closesocket(socketHandle);
+        WSACleanup();
+        return false;
+    }
+
+    notification_socket_handle_ = static_cast<std::uintptr_t>(socketHandle);
+    notification_poller_->start();
+    return true;
+#else
+    return false;
+#endif
+}
+
+void BloodyP93Plugin::StopNotificationListener()
+{
+    if(notification_poller_)
+        notification_poller_->stop();
+#ifdef _WIN32
+    if(notification_socket_handle_ != ~std::uintptr_t{0})
+    {
+        closesocket(static_cast<SOCKET>(notification_socket_handle_));
+        notification_socket_handle_ = ~std::uintptr_t{0};
+        WSACleanup();
+    }
+#endif
+}
+
 void BloodyP93Plugin::HandleNotification()
 {
-    while(notification_socket_ && notification_socket_->hasPendingDatagrams())
+#ifdef _WIN32
+    if(notification_socket_handle_ == ~std::uintptr_t{0})
+        return;
+
+    const SOCKET socketHandle = static_cast<SOCKET>(notification_socket_handle_);
+    for(;;)
     {
-        QByteArray datagram;
-        datagram.resize(static_cast<int>(notification_socket_->pendingDatagramSize()));
-        notification_socket_->readDatagram(datagram.data(), datagram.size());
-        if(!enabled_.load() || !notifications_->isChecked()) continue;
-        const QByteArray cmd = datagram.trimmed().toUpper();
+        std::array<char, 64> packet{};
+        const int length = recvfrom(socketHandle, packet.data(), static_cast<int>(packet.size()), 0, nullptr, nullptr);
+        if(length == SOCKET_ERROR)
+        {
+            if(WSAGetLastError() != WSAEWOULDBLOCK)
+                status_->setText("Local notification socket read failed.");
+            break;
+        }
+        if(length <= 0 || !enabled_.load() || !notifications_->isChecked())
+            continue;
+
+        const QByteArray cmd = QByteArray(packet.data(), length).trimmed().toUpper();
         if(cmd == "P93:SUCCESS")
         {
             notification_timeout_->stop();
             beacon_->setChecked(false);
             P93Protocol::Slots slot_colors{};
-            slot_colors.fill({0,255,0});
-            if(device_.SetSlots(slot_colors)) notification_timeout_->start(1800);
+            slot_colors.fill({0, 255, 0});
+            if(device_.SetSlots(slot_colors))
+                notification_timeout_->start(1800);
         }
         else if(cmd == "P93:ALERT" || cmd == "P93:ERROR" || cmd == "P93:NOTICE")
         {
             beacon_color_ = cmd == "P93:ERROR" ? P93Protocol::Color{255, 0, 0}
-                         : P93Protocol::Color{255, 210, 0};
-            if(!beacon_->isChecked()) beacon_->setChecked(true);
+                                             : P93Protocol::Color{255, 210, 0};
+            if(!beacon_->isChecked())
+                beacon_->setChecked(true);
             notification_timeout_->start(5000);
         }
         else if(cmd == "P93:STOP")
@@ -289,6 +405,7 @@ void BloodyP93Plugin::HandleNotification()
             ApplyColor();
         }
     }
+#endif
 }
 
 void BloodyP93Plugin::RegisterDevice()
@@ -308,7 +425,7 @@ void BloodyP93Plugin::RegisterDevice()
     setup.location = "HID 09DA:31DE MI_02 COL04";
     setup.name = "Bloody P93 (community)";
     setup.vendor = "Bloody";
-    setup.version = "0.2.0";
+    setup.version = "0.2.1";
     setup.active_mode = 0;
     setup.type = DEVICE_TYPE_MOUSE;
     setup.flags = CONTROLLER_FLAG_VIRTUAL;
@@ -350,8 +467,25 @@ void BloodyP93Plugin::RegisterDevice()
         return;
     }
 
+    const QStringList remembered = LoadSetting("lastColors", QStringList{}).toStringList();
     for(std::size_t i=0;i<P93Protocol::SlotCount;++i)
-        controller_->SetColor(static_cast<unsigned int>(i), ToRGBColor(160,0,255));
+    {
+        unsigned red=160, green=0, blue=255;
+        if(i < static_cast<std::size_t>(remembered.size()))
+        {
+            const auto components = remembered.at(static_cast<qsizetype>(i)).split(',');
+            if(components.size()==3)
+            {
+                bool validR=false, validG=false, validB=false;
+                const unsigned rr=components[0].toUInt(&validR);
+                const unsigned gg=components[1].toUInt(&validG);
+                const unsigned bb=components[2].toUInt(&validB);
+                if(validR && validG && validB && rr <= 255 && gg <= 255 && bb <= 255)
+                { red=rr; green=gg; blue=bb; }
+            }
+        }
+        controller_->SetColor(static_cast<unsigned int>(i), ToRGBColor(red,green,blue));
+    }
     api_->RegisterVirtualRGBController(controller_);
     status_->setText("Bloody P93 connected. RGB writes disabled until you enable them.");
     enable_->setEnabled(true);
@@ -363,15 +497,22 @@ void BloodyP93Plugin::ApplyColor()
         return;
 
     P93Protocol::Slots slot_colors{};
+    QStringList colorPreferences;
     for(std::size_t i=0;i<P93Protocol::SlotCount;++i)
     {
         const RGBColor color = controller_->GetColor(static_cast<unsigned int>(i));
+        const unsigned red = static_cast<unsigned>(RGBGetRValue(color));
+        const unsigned green = static_cast<unsigned>(RGBGetGValue(color));
+        const unsigned blue = static_cast<unsigned>(RGBGetBValue(color));
         slot_colors[i] = {
-            static_cast<std::uint8_t>(RGBGetRValue(color)),
-            static_cast<std::uint8_t>(RGBGetGValue(color)),
-            static_cast<std::uint8_t>(RGBGetBValue(color))
+            static_cast<std::uint8_t>(red),
+            static_cast<std::uint8_t>(green),
+            static_cast<std::uint8_t>(blue)
         };
+        colorPreferences << QStringLiteral("%1,%2,%3").arg(red).arg(green).arg(blue);
     }
+    pending_colors_ = colorPreferences;
+    color_persistence_timer_->start();
     if(!device_.SetSlots(slot_colors))
     {
         enabled_.store(false);
@@ -391,10 +532,15 @@ QMenu* BloodyP93Plugin::GetTrayMenu() { return nullptr; }
 
 void BloodyP93Plugin::Unload()
 {
+    if(color_persistence_timer_ && color_persistence_timer_->isActive() && !pending_colors_.isEmpty())
+    {
+        color_persistence_timer_->stop();
+        SaveSetting("lastColors", pending_colors_);
+    }
     enabled_.store(false);
     if(beacon_timer_) beacon_timer_->stop();
     if(notification_timeout_) notification_timeout_->stop();
-    if(notification_socket_) notification_socket_->close();
+    StopNotificationListener();
     if(controller_ && api_)
     {
         api_->UnregisterVirtualRGBController(controller_);

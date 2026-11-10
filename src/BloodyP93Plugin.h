@@ -9,7 +9,9 @@
 #include <QSpinBox>
 #include <QLineEdit>
 #include <QTimer>
-#include <QUdpSocket>
+#include <cstdint>
+#include <QByteArray>
+#include <QStringList>
 #include "OpenRGBPluginInterface.h"
 #include "P93Hid.h"
 
@@ -43,6 +45,8 @@ private:
     void TickBeacon();
     bool ParseGroups(std::vector<std::size_t>& left, std::vector<std::size_t>& right);
     void HandleNotification();
+    bool StartNotificationListener();
+    void StopNotificationListener();
 
     OpenRGBPluginAPIInterface* api_ = nullptr;
     RGBControllerInterface* controller_ = nullptr;
@@ -58,7 +62,10 @@ private:
     QTimer* beacon_timer_ = nullptr;
     QTimer* notification_timeout_ = nullptr;
     QCheckBox* notifications_ = nullptr;
-    QUdpSocket* notification_socket_ = nullptr;
+    QTimer* notification_poller_ = nullptr;
+    QTimer* color_persistence_timer_ = nullptr;
+    QStringList pending_colors_;
+    std::uintptr_t notification_socket_handle_ = ~std::uintptr_t{0};
     P93Protocol::Color beacon_color_ = {255, 210, 0};
     bool beacon_phase_ = false;
     int next_slot_ = 0;

@@ -107,3 +107,11 @@ Logs: `%APPDATA%\OpenRGB\logs\`. Avoid uploading raw USB traffic logs, which may
 See the [repository](https://github.com/liikane/openrgb-bloody-p93) for sources, Windows CI builds and releases. The plugin uses OpenRGB 1.1 Plugin API v5, Qt 6.8.3, and 64-byte Windows HID Feature reports.
 
 Report issues through [GitHub Issues](https://github.com/liikane/openrgb-bloody-p93/issues). Do not attempt arbitrary HID or firmware writes. License: GPL-2.0-or-later.
+
+## Restart behavior (v0.2.1)
+
+The plugin persists the **Enable RGB control** checkbox, last configured colors for all 15 HID slots, beacon groups, interval, and the notification listener checkbox. It restores these settings when OpenRGB restarts and the P93 is available. If you uncheck RGB control, the **off** preference is saved.
+
+For safety, the flashing beacon does **not** start automatically after restarting OpenRGB. Choose **Flashing beacon** again to activate it. Notification commands remain optional; loopback listening is only enabled if you opted in.
+
+Preferences use Qt INI user settings; no extra driver or Qt Network DLL is needed. The first load of a fresh installation always starts with RGB control disabled.

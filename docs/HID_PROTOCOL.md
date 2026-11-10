@@ -95,3 +95,10 @@ A local program, scheduled task, or ntfy client can invoke this script upon a re
 - Opening Bloody WorkShop 8 concurrently may overwrite RGB colors; close its lighting editor during tests, without changing existing button mappings.
 - Send untrusted data only after explicit local notification enablement; local UDP listener intentionally has no network exposure beyond loopback.
 - This is an independently derived community protocol, **not a manufacturer-supported API**.
+
+## v0.2.1 runtime and configuration notes
+
+- The plug-in no longer depends on \`Qt6Network.dll\`. Local notifications use built-in Windows Winsock2, with an opt-in loopback-only UDP listener.
+- Configuration is persisted via Qt's per-user INI QSettings: \`rgbEnabled\`, \`lastColors\` (15 triples), \`groupA\`, \`groupB\`, \`intervalMs\`, \`notificationsEnabled\`.
+- Automatic restore only re-enables RGB control if the matching device is available; **beacon effects do not automatically resume** after OpenRGB restart.
+- Colors are written to the settings file after a short debounce, not once per HID RGB frame, to avoid unnecessary disk activity.

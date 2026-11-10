@@ -105,3 +105,11 @@ Diagnostikalogid: `%APPDATA%\OpenRGB\logs\`. Nendes ei pruugi olla kirjutatavate
 Lähtekood, lähtefailid, CI-ehitused ja väljalasked on [GitHubis](https://github.com/liikane/openrgb-bloody-p93). Kasutusel on OpenRGB 1.1 Plugin API 5, Qt 6.8.3 ja Windowsi HID Feature-reporti pikkusega 64 baiti.
 
 Probleemid ja täiendusettepanekud: [GitHub Issues](https://github.com/liikane/openrgb-bloody-p93/issues). Uut HID seadmetuge ei tohiks katsetada tundmatute käskudega ega firmware uuendustega. Litsents: GPL-2.0-or-later.
+
+## Seadistuste taastamine pärast OpenRGB taaskäivitamist (v0.2.1)
+
+Plugin jätab meelde **Enable RGB control** valiku, kõik 15 HID-värvi, vilkuri grupid, kiiruse ja kohalike teavituste lubamise. Need taastatakse järgmisel OpenRGB käivitamisel, kui hiir on ühendatud. RGB-juhtimise linnukese eemaldamine jätab sätte välja ka järgmiseks käivituseks.
+
+**Vilkur ei käivitu automaatselt** pärast OpenRGB taaskäivitamist, et vältida ootamatut vilkumist. Vajaduse korral märgi uuesti **Flashing beacon**. Teavituste kuulamine toimub ainult kasutaja lubamisel.
+
+Seaded hoitakse kasutaja profiili kohalikus INI-failis. Plugin kasutab Windowsi Winsocki ja ei vaja eraldi Qt Network DLL-i.
