@@ -1,6 +1,10 @@
-"""Unit tests for ntfy event classification; no network or USB access."""
+"""Unit tests for ntfy classification, deduplication and Windows-event policy."""
 import importlib.util
+import logging
 import pathlib
+import queue
+import threading
+import time
 import unittest
 
 file = pathlib.Path(__file__).with_name("bridge.py")
@@ -26,6 +30,20 @@ class NtfyBridgeTests(unittest.TestCase):
         for item, expected in examples:
             with self.subTest(item=item):
                 self.assertEqual(m.classify_ntfy(item), expected)
+
+    def test_stream_and_poll_deduplicate(self):
+        events = queue.Queue()
+        src = m.NtfySource({"server": "https://example.invalid", "topic": "testtopicaaaa", "token": ""},
+                           events, threading.Event(), logging.getLogger("test"))
+        t = int(time.time())
+        msg = {"event": "message", "id": "msg123", "time": t, "tags": ["warning"]}
+        src.handle_message(msg, "ntfy-stream")
+        src.handle_message(msg, "ntfy-poll")
+        self.assertEqual(events.qsize(), 1)
+        self.assertEqual(events.get_nowait(), ("ALERT", "ntfy-stream"))
+        self.assertEqual(src.since, str(t))
+        src.handle_message({"event": "message", "id": "old", "time": t-360, "priority": 5}, "ntfy-poll")
+        self.assertTrue(events.empty(), "Old cached messages should not trigger lights")
 
     def test_no_unexpected_event_output(self):
         self.assertEqual(m.VALID_EVENTS, {"ALERT", "ERROR", "NOTICE", "SUCCESS", "STOP"})

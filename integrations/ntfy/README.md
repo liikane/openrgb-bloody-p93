@@ -76,3 +76,9 @@ Need tellimused kasutavad Windowsi `EvtSubscribe` liidest, **ainult tulevasi sü
 - Käivitustõrke korral loe ainult logi veatüüpi; ära avalda oma privaatset teemat, tokenit ega tooreid teavitussõnumeid.
 
 **Tehniline piirang:** UDP ei anna kinnitust, et hiir füüsiliselt süttis. Edukat NTFY → OpenRGB → P93 rada on kontrollitud hiire HID-vastustest. Windowsi 4 sündmuse tellimist on kontrollitud, kuid tegelikke Defender/Update sündmusi ei tekitatud katse eesmärgil.
+
+### Ühenduse töökindlus
+
+Sild kasutab kiireks reageerimiseks NTFY JSON-voogu. Kui avatud voog ei edasta uusi teateid, kontrollib varumehhanism iga umbes 12 sekundi järel `poll=1&since=...` abil ainult uuemaid sõnumeid. Sama teate ID-d töödeldakse üks kord; üle kahe minuti vanad vahemälusõnumid ei käivita vilkurit.
+
+Varukontroll vajab NTFY sõnumite tavapärast serveripoolset vahemälu. `Cache: no` sõnum ei ole tagantjärele loetav ja vajab töötavat otsevoogu. Kui püsiv ühendus katkeb, üritab programm seda taastada.

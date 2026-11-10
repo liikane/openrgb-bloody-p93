@@ -157,15 +157,67 @@ class NtfySource:
         self.seen = collections.deque(maxlen=400)
         self.seen_set = set()
         self.since = str(int(time.time()))
+        self.seen_lock = threading.Lock()
 
-    def _remember(self, message_id: str):
-        if not message_id or message_id in self.seen_set:
-            return False
-        if len(self.seen) >= self.seen.maxlen:
-            self.seen_set.discard(self.seen.popleft())
-        self.seen.append(message_id)
-        self.seen_set.add(message_id)
-        return True
+    def _remember(self, message_id: str, timestamp: int | None = None):
+        with self.seen_lock:
+            if not message_id or message_id in self.seen_set:
+                return False
+            if len(self.seen) >= self.seen.maxlen:
+                self.seen_set.discard(self.seen.popleft())
+            self.seen.append(message_id)
+            self.seen_set.add(message_id)
+            if timestamp is not None:
+                # Cache replay by timestamp is more resilient than by message ID.
+                self.since = str(max(int(self.since), timestamp))
+            return True
+
+    def handle_message(self, message: dict, source: str):
+        if message.get("event") != "message":
+            return
+        stamp = message.get("time")
+        if not isinstance(stamp, (int, float)):
+            return
+        stamp = int(stamp)
+        msg_id = str(message.get("id", ""))
+        if not self._remember(msg_id, stamp):
+            return
+        # Do not flash on messages that have been cached for several minutes.
+        if stamp < int(time.time()) - 120:
+            return
+        event = classify_ntfy(message)
+        if event:
+            try:
+                self.outgoing.put_nowait((event, source))
+            except queue.Full:
+                self.log.warning("Event buffer full, dropping ntfy event")
+
+    def poll_loop(self):
+        """Fallback for long-lived streams that silently stop delivering messages."""
+        url = self.cfg["server"] + "/" + self.cfg["topic"] + "/json"
+        while not self.shutdown.wait(12):
+            with self.seen_lock:
+                since = self.since
+            req_url = url + "?poll=1&since=" + urllib.parse.quote(since, safe="")
+            headers = {"Accept": "application/x-ndjson", "User-Agent": "TrueMouseArt-ntfy-bridge/0.2"}
+            if self.cfg["token"]:
+                headers["Authorization"] = "Bearer " + self.cfg["token"]
+            try:
+                with urllib.request.urlopen(urllib.request.Request(req_url, headers=headers), timeout=15) as response:
+                    # Read only up to 256 KiB per poll to limit memory on a busy shared topic.
+                    body = response.read(262_145)
+                    if len(body) > 262_144:
+                        self.log.warning("ntfy poll response too large; skipped")
+                        continue
+                for raw in body.splitlines():
+                    try:
+                        message = json.loads(raw)
+                    except (ValueError, UnicodeError):
+                        continue
+                    self.handle_message(message, "ntfy-poll")
+            except Exception as ex:
+                # Keep any exception text (which may contain a private URL) out of logs.
+                self.log.warning("ntfy fallback poll failed (%s)", type(ex).__name__)
 
     def run(self):
         url = self.cfg["server"] + "/" + self.cfg["topic"] + "/json"
@@ -189,19 +241,7 @@ class NtfySource:
                             message = json.loads(raw)
                         except (ValueError, UnicodeError):
                             continue
-                        if message.get("event") != "message":
-                            continue
-                        msg_id = str(message.get("id", ""))
-                        if not self._remember(msg_id):
-                            continue
-                        # Since by ID ensures we can reconnect without replaying all cached messages.
-                        self.since = msg_id
-                        event = classify_ntfy(message)
-                        if event:
-                            try:
-                                self.outgoing.put_nowait((event, "ntfy"))
-                            except queue.Full:
-                                self.log.warning("Event buffer full, dropping ntfy event")
+                        self.handle_message(message, "ntfy-stream")
             except (TimeoutError, OSError, urllib.error.URLError, urllib.error.HTTPError) as ex:
                 # Do not log exception text: it may include the private URL/topic.
                 code = getattr(ex, "code", None)
@@ -252,9 +292,11 @@ def run_bridge(config_path: Path, windows_events: bool, ntfy_events: bool,
         signal.signal(signal.SIGTERM, stop)
     worker = None
     if cfg:
-        worker = threading.Thread(target=NtfySource(cfg, q, shutdown, log).run,
-                                  daemon=True, name="ntfy-stream")
+        source = NtfySource(cfg, q, shutdown, log)
+        worker = threading.Thread(target=source.run, daemon=True, name="ntfy-stream")
         worker.start()
+        poll_worker = threading.Thread(target=source.poll_loop, daemon=True, name="ntfy-poll")
+        poll_worker.start()
     log.info("Bridge started ntfy=%s windows_subscribers=%d", bool(cfg), count)
     try:
         while not shutdown.is_set():

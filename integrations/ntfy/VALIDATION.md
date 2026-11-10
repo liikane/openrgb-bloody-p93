@@ -38,3 +38,7 @@ The four event subscriptions are **active for future events** and don't read eve
 - [ ] Add a separate privacy/permission-aware packaged Windows Toast listener for user-selected applications (see issue #5).
 - [ ] Provide tray settings and event allowlist/quiet hours in standalone Vilgutaja (issues #6-#8).
 - [ ] Consider application-specific ntfy rules if the existing topic triggers too many flashing notices.
+
+## Startup task reliability follow-up
+
+The scheduled task was installed under the current Windows user and launched a single pythonw background process when manually triggered. During an additional launch test, an ntfy JSON stream connected but did not deliver some subsequently published messages. A fallback `poll=1&since=...` worker was therefore added at ~12-second intervals, with message-ID deduplication and a 2-minute freshness cutoff. Pending final scheduled-task end-to-end validation for this updated version.
