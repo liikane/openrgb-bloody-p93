@@ -51,6 +51,7 @@ The included PowerShell command talks only to the **local** OpenRGB plugin. For 
 
 ## Documentation / manuaal
 
+- [Project story: how I turned a mouse into a flashing beacon](docs/CASE_STUDY.md)
 - [English user manual](docs/USER_MANUAL.md)
 - [Eestikeelne kasutusjuhend](docs/KASUTUSJUHEND.md)
 - [HID RGB protocol and exact commands](docs/HID_PROTOCOL.md)
