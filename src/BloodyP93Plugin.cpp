@@ -16,6 +16,7 @@
 #include <QSet>
 #include <QSignalBlocker>
 #include <array>
+#include <algorithm>
 
 namespace
 {
@@ -38,7 +39,7 @@ OpenRGBPluginInfo BloodyP93Plugin::GetPluginInfo()
     OpenRGBPluginInfo info{};
     info.Name = "True Mouse Art";
     info.Description = "Bloody P93 mouse OpenRGB Plugin / I Turned My Mouse into a Flashing Beacon!";
-    info.Version = "0.4.0";
+    info.Version = "0.5.0";
     info.Commit = "community";
     info.URL = "https://github.com/liikane/openrgb-bloody-p93";
     info.Location = OPENRGB_PLUGIN_LOCATION_SETTINGS;
@@ -83,7 +84,7 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
 
     auto* identify = new QPushButton("Identify next LED slot (yellow)", widget_);
     layout->addWidget(identify);
-    slot_status_ = new QLabel("Physical LEDs: 1 wheel, 2 left front, 3 right front, 4 extra buttons, 5 right mid, 6 left mid, 7 left rear, 8 right rear. Logo: 7+8.", widget_);
+    slot_status_ = new QLabel("Physical LEDs: 1 wheel, 2 left front, 3 right front, 4 directly behind wheel, 5 right mid, 6 left mid, 7 left rear, 8 right rear. Logo: 7+8.", widget_);
     layout->addWidget(slot_status_);
 
     auto* restore = new QPushButton("Restore selected OpenRGB colors", widget_);
@@ -93,7 +94,7 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
     left_slots_ = new QLineEdit("1,4", widget_);
     right_slots_ = new QLineEdit("2,3,5,6,7,8", widget_);
     interval_ = new QSpinBox(widget_);
-    interval_->setRange(120, 2000);
+    interval_->setRange(400, 2000);
     interval_->setSingleStep(50);
     interval_->setValue(320);
     interval_->setSuffix(" ms");
@@ -123,7 +124,7 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
         if(beacon_ && beacon_->isChecked()) TickBeacon();
     });
 
-    beacon_ = new QCheckBox("Flashing beacon — alternate groups A and B (yellow)", widget_);
+    beacon_ = new QCheckBox("Manual beacon (temporary, two custom color groups)", widget_);
     beacon_->setEnabled(false);
     layout->addWidget(beacon_);
 
@@ -131,11 +132,32 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
     notifications_->setEnabled(false);
     layout->addWidget(notifications_);
 
+    auto* idle_form = new QFormLayout();
+    idle_enabled_ = new QCheckBox("Keep 8 LEDs glowing: rotating colors when no alerts", widget_);
+    idle_form->addRow("Idle lighting", idle_enabled_);
+    idle_interval_ = new QSpinBox(widget_);
+    idle_interval_->setRange(250, 2000);
+    idle_interval_->setSingleStep(50);
+    idle_interval_->setSuffix(" ms");
+    idle_form->addRow("Color rotation speed", idle_interval_);
+    layout->addLayout(idle_form);
+
+    pending_label_ = new QLabel("No pending notifications. Waiting for a signal.", widget_);
+    pending_label_->setWordWrap(true);
+    layout->addWidget(pending_label_);
+    acknowledge_button_ = new QPushButton("Acknowledge all alerts and resume colorful idle", widget_);
+    layout->addWidget(acknowledge_button_);
+    auto* hotkey_info = new QLabel("Global shortcut (with the ntfy bridge): Ctrl + Shift + F12. "
+        "No keyboard hooks or mouse button remapping.", widget_);
+    hotkey_info->setWordWrap(true);
+    layout->addWidget(hotkey_info);
+
     auto* instructions = new QLabel(
         "Windows only. 64-byte HID RGB reports, no button macros or firmware changes. "
         "The HID report contains 15 slots, but only slots 1-8 connect to P93 lighting. "
         "Notification commands are listened for only when enabled. "
-        "Unchecking RGB control stops effects but may leave the last color on the mouse.", widget_);
+        "Alerts stay active until acknowledged, even after an OpenRGB restart. "
+        "Idle lighting is enabled by default. Disabling RGB stops all lighting writes.", widget_);
     instructions->setWordWrap(true);
     layout->addWidget(instructions);
     layout->addStretch(1);
@@ -144,13 +166,9 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
     beacon_timer_->setInterval(interval_->value());
     connect(beacon_timer_, &QTimer::timeout, this, [this]{ TickBeacon(); });
 
-    notification_timeout_ = new QTimer(this);
-    notification_timeout_->setSingleShot(true);
-    connect(notification_timeout_, &QTimer::timeout, this, [this]{
-        if(beacon_) beacon_->setChecked(false);
-        notification_red_override_ = false;
-        ApplyColor();
-    });
+    idle_timer_ = new QTimer(this);
+    idle_timer_->setInterval(550);
+    connect(idle_timer_, &QTimer::timeout, this, [this]{ TickIdle(); });
 
     notification_poller_ = new QTimer(this);
     notification_poller_->setInterval(60);
@@ -171,41 +189,68 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
         notifications_->setEnabled(value);
         if(!value)
         {
-            notification_timeout_->stop();
+            beacon_timer_->stop();
+            idle_timer_->stop();
             beacon_->setChecked(false);
             notifications_->setChecked(false);
-            status_->setText("Bloody P93 connected. RGB writes disabled; the last color may remain.");
+            status_->setText("Bloody P93 connected. RGB writes disabled; existing pending alerts are saved.");
         }
         else
         {
-            status_->setText("RGB control enabled. Use Devices for individual slots, or start the beacon.");
-            ApplyColor();
+            status_->setText("RGB enabled. Pending events take priority over idle colors.");
+            if(!pending_events_.empty())
+            {
+                notification_tick_ = 0;
+                beacon_timer_->setInterval(std::max(500, interval_->value()));
+                beacon_timer_->start();
+                TickBeacon();
+            }
+            else
+                StartIdle();
         }
     });
 
     connect(interval_, qOverload<int>(&QSpinBox::valueChanged), this, [this](int val){
-        beacon_timer_->setInterval(val);
+        beacon_timer_->setInterval(std::max(500, val));
         SaveSetting("intervalMs", val);
     });
+    connect(idle_interval_, qOverload<int>(&QSpinBox::valueChanged), this, [this](int val){
+        idle_timer_->setInterval(val);
+        SaveSetting("idleIntervalMs", val);
+    });
+    connect(idle_enabled_, &QCheckBox::toggled, this, [this](bool active){
+        SaveSetting("idleAnimation", active);
+        if(active) StartIdle();
+        else
+        {
+            idle_timer_->stop();
+            ApplyColor();
+        }
+    });
+    connect(acknowledge_button_, &QPushButton::clicked, this, [this]{ AcknowledgeAll(); });
 
     connect(beacon_, &QCheckBox::toggled, this, [this](bool checked){
+        if(!pending_events_.empty())
+            return; // Active alerts cannot be cleared by toggling manual beacon.
         if(checked && enabled_.load())
         {
+            idle_timer_->stop();
             beacon_phase_ = false;
-            beacon_timer_->start(interval_->value());
+            beacon_timer_->start(std::max(500, interval_->value()));
             TickBeacon();
         }
         else
         {
             beacon_timer_->stop();
-            if(enabled_.load()) ApplyColor();
+            StartIdle();
         }
     });
 
     connect(identify, &QPushButton::clicked, this, [this]{
         if(!enabled_.load()) return;
-        notification_timeout_->stop();
+        AcknowledgeAll();
         beacon_->setChecked(false);
+        idle_timer_->stop();
         P93Protocol::Slots slot_colors{};
         slot_colors[static_cast<std::size_t>(next_slot_)] = {255,210,0};
         if(device_.SetSlots(slot_colors))
@@ -221,9 +266,7 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
     });
 
     connect(restore, &QPushButton::clicked, this, [this]{
-        notification_timeout_->stop();
-        beacon_->setChecked(false);
-        ApplyColor();
+        AcknowledgeAll();
     });
 
     connect(notifications_, &QCheckBox::toggled, this, [this](bool enabled){
@@ -279,7 +322,20 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
             SaveSetting("groupB", right_slots_->text());
         }
     }
-    interval_->setValue(LoadSetting("intervalMs", 320).toInt());
+    interval_->setValue(LoadSetting("intervalMs", 920).toInt());
+    idle_interval_->setValue(LoadSetting("idleIntervalMs", 550).toInt());
+    idle_enabled_->setChecked(LoadSetting("idleAnimation", true).toBool());
+    {
+        const QStringList stored = LoadSetting("pendingEvents", QStringList{}).toStringList();
+        for(const QString& name : stored)
+        {
+            P93Signals::Event kind{};
+            const std::string code = name.toStdString();
+            if(P93Signals::FromName(code, kind) && pending_events_.size() < 16)
+                pending_events_.push_back(kind);
+        }
+        UpdatePendingLabel();
+    }
     const QColor saved_a(LoadSetting("beaconColorA", QStringLiteral("#FFD200")).toString());
     const QColor saved_b(LoadSetting("beaconColorB", QStringLiteral("#FFD200")).toString());
     beacon_color_a_ = saved_a.isValid() ? saved_a : QColor(255, 210, 0);
@@ -342,32 +398,138 @@ bool BloodyP93Plugin::ParseGroups(std::vector<std::size_t>& left,
     return true;
 }
 
+void BloodyP93Plugin::UpdatePendingLabel()
+{
+    if(!pending_label_) return;
+    if(pending_events_.empty())
+    {
+        pending_label_->setText("No pending notifications. Idle color animation is available.");
+        acknowledge_button_->setEnabled(false);
+        return;
+    }
+    QStringList summary;
+    for(const auto kind : pending_events_)
+        summary << QString::fromLatin1(P93Signals::Name(kind).data());
+    pending_label_->setText(QString("Pending notifications (%1): %2. "
+        "They repeat until acknowledged, including after restart.")
+        .arg(pending_events_.size()).arg(summary.join(", ")));
+    acknowledge_button_->setEnabled(true);
+}
+
+void BloodyP93Plugin::AddNotification(P93Signals::Event kind)
+{
+    if(pending_events_.size() >= 16)
+        pending_events_.erase(pending_events_.begin()); // bounded queue, never unbounded memory
+    pending_events_.push_back(kind);
+    QStringList saved;
+    for(const auto item : pending_events_)
+        saved << QString::fromLatin1(P93Signals::Name(item).data());
+    SaveSetting("pendingEvents", saved); // no message body/title
+    UpdatePendingLabel();
+    if(!enabled_.load()) return;
+    idle_timer_->stop();
+    beacon_timer_->stop();
+    notification_tick_ = 0;
+    beacon_timer_->setInterval(std::max(500, interval_->value()));
+    beacon_timer_->start();
+    TickBeacon();
+}
+
+void BloodyP93Plugin::AcknowledgeAll()
+{
+    pending_events_.clear();
+    SaveSetting("pendingEvents", QStringList{});
+    UpdatePendingLabel();
+    beacon_timer_->stop();
+    if(beacon_->isChecked())
+    {
+        QSignalBlocker blocker(beacon_);
+        beacon_->setChecked(false);
+    }
+    status_->setText("Notifications acknowledged. Normal idle colors resumed.");
+    StartIdle();
+}
+
+void BloodyP93Plugin::StartIdle()
+{
+    if(!enabled_.load() || !pending_events_.empty() || (beacon_ && beacon_->isChecked()))
+        return;
+    beacon_timer_->stop();
+    if(idle_enabled_ && idle_enabled_->isChecked())
+    {
+        idle_timer_->setInterval(idle_interval_->value());
+        idle_timer_->start();
+        TickIdle();
+    }
+    else
+    {
+        idle_timer_->stop();
+        ApplyColor();
+    }
+}
+
+void BloodyP93Plugin::TickIdle()
+{
+    if(!enabled_.load() || !pending_events_.empty() ||
+       (beacon_ && beacon_->isChecked()) || !idle_enabled_->isChecked())
+        return;
+    const auto colors = P93Signals::IdleRainbow(idle_step_++);
+    if(!device_.SetSlots(colors))
+    {
+        idle_timer_->stop();
+        status_->setText("Idle lighting HID write failed. Retry device detection.");
+    }
+}
+
 void BloodyP93Plugin::TickBeacon()
 {
-    if(!enabled_.load() || !beacon_->isChecked()) return;
+    if(!enabled_.load()) return;
     std::vector<std::size_t> a, b;
     if(!ParseGroups(a,b))
     {
-        beacon_->setChecked(false);
-        status_->setText("Invalid beacon groups: use non-overlapping physical LED numbers 1-8.");
-        return;
+        if(!pending_events_.empty())
+        {
+            a = {0,3};
+            b = {1,2,4,5,6,7};
+        }
+        else
+        {
+            beacon_->setChecked(false);
+            status_->setText("Invalid beacon groups: use non-overlapping physical LED numbers 1-8.");
+            return;
+        }
     }
-
     P93Protocol::Slots slot_colors{};
-    const QColor chosen = notification_red_override_
-                        ? QColor(255, 0, 0)
-                        : (beacon_phase_ ? beacon_color_b_ : beacon_color_a_);
-    const P93Protocol::Color color = {
-        static_cast<std::uint8_t>(chosen.red()),
-        static_cast<std::uint8_t>(chosen.green()),
-        static_cast<std::uint8_t>(chosen.blue())
-    };
-    for(std::size_t i : (beacon_phase_ ? b : a))
-        slot_colors[i] = color;
-    beacon_phase_ = !beacon_phase_;
+    if(!pending_events_.empty())
+    {
+        const auto idx = P93Signals::CurrentNotificationIndex(notification_tick_,
+                                                               pending_events_.size());
+        const auto kind = pending_events_[idx];
+        const bool second = (notification_tick_ % 2) != 0;
+        slot_colors = P93Signals::Frame(kind, second, a, b);
+        ++notification_tick_;
+    }
+    else
+    {
+        if(!beacon_->isChecked())
+        {
+            beacon_timer_->stop();
+            StartIdle();
+            return;
+        }
+        const QColor chosen = beacon_phase_ ? beacon_color_b_ : beacon_color_a_;
+        const P93Protocol::Color color = {
+            static_cast<std::uint8_t>(chosen.red()),
+            static_cast<std::uint8_t>(chosen.green()),
+            static_cast<std::uint8_t>(chosen.blue())
+        };
+        for(std::size_t i : (beacon_phase_ ? b : a))
+            slot_colors[i] = color;
+        beacon_phase_ = !beacon_phase_;
+    }
     if(!device_.SetSlots(slot_colors))
     {
-        beacon_->setChecked(false);
+        beacon_timer_->stop();
         status_->setText("Beacon HID write failed. Retry device detection.");
     }
 }
@@ -444,32 +606,25 @@ void BloodyP93Plugin::HandleNotification()
             continue;
 
         const QByteArray cmd = QByteArray(packet.data(), length).trimmed().toUpper();
-        if(cmd == "P93:SUCCESS")
+        if(cmd == "P93:ACK" || cmd == "P93:STOP")
         {
-            notification_timeout_->stop();
-            beacon_->setChecked(false);
-            notification_red_override_ = false;
-            P93Protocol::Slots slot_colors{};
-            for(std::size_t i=0; i<P93Protocol::PhysicalLedCount; ++i)
-                slot_colors[i] = {0, 255, 0};
-            if(device_.SetSlots(slot_colors))
-                notification_timeout_->start(1800);
+            AcknowledgeAll();
         }
-        else if(cmd == "P93:ALERT" || cmd == "P93:ERROR" || cmd == "P93:NOTICE")
+        else if(cmd == "P93:ALERT")
         {
-            notification_red_override_ = (cmd == "P93:ERROR");
-            if(!beacon_->isChecked())
-                beacon_->setChecked(true);
-            else
-                TickBeacon();
-            notification_timeout_->start(5000);
+            AddNotification(P93Signals::Event::Alert);
         }
-        else if(cmd == "P93:STOP")
+        else if(cmd == "P93:ERROR")
         {
-            notification_timeout_->stop();
-            beacon_->setChecked(false);
-            notification_red_override_ = false;
-            ApplyColor();
+            AddNotification(P93Signals::Event::Error);
+        }
+        else if(cmd == "P93:SUCCESS")
+        {
+            AddNotification(P93Signals::Event::Success);
+        }
+        else if(cmd == "P93:NOTICE")
+        {
+            AddNotification(P93Signals::Event::Notice);
         }
     }
 #endif
@@ -492,7 +647,7 @@ void BloodyP93Plugin::RegisterDevice()
     setup.location = "HID 09DA:31DE MI_02 COL04";
     setup.name = "Bloody P93 (community)";
     setup.vendor = "Bloody";
-    setup.version = "0.4.0";
+    setup.version = "0.5.0";
     setup.active_mode = 0;
     setup.type = DEVICE_TYPE_MOUSE;
     setup.flags = CONTROLLER_FLAG_VIRTUAL;
@@ -518,7 +673,7 @@ void BloodyP93Plugin::RegisterDevice()
         led slot{};
         static const char* names[P93Protocol::PhysicalLedCount] = {
             "1 - Wheel", "2 - Left front", "3 - Right front",
-            "4 - Extra buttons center", "5 - Right middle",
+            "4 - Directly behind wheel", "5 - Right middle",
             "6 - Left middle", "7 - Left rear + logo",
             "8 - Right rear + logo"
         };
@@ -566,7 +721,7 @@ void BloodyP93Plugin::RegisterDevice()
 
 void BloodyP93Plugin::ApplyColor()
 {
-    if(!enabled_.load() || !controller_ || (beacon_ && beacon_->isChecked()))
+    if(!enabled_.load() || !controller_)
         return;
 
     P93Protocol::Slots slot_colors{};
@@ -586,6 +741,9 @@ void BloodyP93Plugin::ApplyColor()
     }
     pending_colors_ = colorPreferences;
     color_persistence_timer_->start();
+    if(!pending_events_.empty() || (beacon_ && beacon_->isChecked()) ||
+       (idle_enabled_ && idle_enabled_->isChecked()))
+        return;
     if(!device_.SetSlots(slot_colors))
     {
         enabled_.store(false);
@@ -612,7 +770,7 @@ void BloodyP93Plugin::Unload()
     }
     enabled_.store(false);
     if(beacon_timer_) beacon_timer_->stop();
-    if(notification_timeout_) notification_timeout_->stop();
+    if(idle_timer_) idle_timer_->stop();
     StopNotificationListener();
     if(controller_ && api_)
     {

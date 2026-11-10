@@ -1,7 +1,7 @@
 {
   "Id": "ee.liikane.openrgb.bloody-p93",
   "Name": "True Mouse Art — Bloody P93 RGB Bridge",
-  "VersionStr": "0.4.0",
+  "VersionStr": "0.5.0",
   "Commit": "experimental",
   "Url": "https://github.com/liikane/openrgb-bloody-p93",
   "OpenRGBPluginAPIVersion": 5

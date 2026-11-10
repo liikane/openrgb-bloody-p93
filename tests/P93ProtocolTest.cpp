@@ -1,4 +1,5 @@
 #include "../src/P93Protocol.h"
+#include "../src/P93Signals.h"
 #include <cassert>
 #include <cstdint>
 #include <iostream>
@@ -64,6 +65,51 @@ int main()
         assert(customA[i] == (Color{0,0,0}));
         assert(customB[i] == (Color{0,0,0}));
     }
+    // Persistent signals: different categories have distinct A/B colors.
+    const std::vector<std::size_t> groupA{0,3};
+    const std::vector<std::size_t> groupB{1,2,4,5,6,7};
+    const auto errorA = P93Signals::Frame(P93Signals::Event::Error, false, groupA, groupB);
+    const auto errorB = P93Signals::Frame(P93Signals::Event::Error, true, groupA, groupB);
+    const auto alertA = P93Signals::Frame(P93Signals::Event::Alert, false, groupA, groupB);
+    const auto alertB = P93Signals::Frame(P93Signals::Event::Alert, true, groupA, groupB);
+    const auto successA = P93Signals::Frame(P93Signals::Event::Success, false, groupA, groupB);
+    const auto noticeB = P93Signals::Frame(P93Signals::Event::Notice, true, groupA, groupB);
+
+    assert(errorA[0] == (Color{210,15,20}));
+    assert(errorA[3] == (Color{210,15,20}));
+    assert(errorA[1] == (Color{0,0,0}));
+    assert(errorB[1] == (Color{245,170,0})); // Red/yellow
+    assert(alertA[0] == (Color{205,15,25}));
+    assert(alertB[1] == (Color{30,95,245})); // Red/blue
+    assert(successA[3] == (Color{20,200,75})); // Green/white
+    assert(noticeB[7] == (Color{235,175,0})); // Green/yellow
+    for(const auto& frame : {errorA, errorB, alertA, alertB, successA, noticeB})
+        for(std::size_t i=PhysicalLedCount; i<SlotCount; ++i)
+            assert(frame[i] == (Color{0,0,0}));
+    assert(P93Signals::CurrentNotificationIndex(0,2) == 0);
+    assert(P93Signals::CurrentNotificationIndex(3,2) == 0);
+    assert(P93Signals::CurrentNotificationIndex(4,2) == 1);
+    assert(P93Signals::CurrentNotificationIndex(8,2) == 0);
+    P93Signals::Event kind{};
+    assert(P93Signals::FromName("ERROR",kind) && kind == P93Signals::Event::Error);
+    assert(P93Signals::FromName("SUCCESS",kind) && kind == P93Signals::Event::Success);
+    assert(!P93Signals::FromName("UNSUPPORTED",kind));
+
+    // Idle animation: no all-black frame, eight nonblack positions, full 8-step rotation.
+    for(std::size_t step=0; step<16; ++step)
+    {
+        const auto idle = P93Signals::IdleRainbow(step);
+        std::size_t active=0;
+        for(std::size_t i=0;i<PhysicalLedCount;++i)
+            if(idle[i][0] || idle[i][1] || idle[i][2])
+                ++active;
+        assert(active == 8);
+        for(std::size_t i=PhysicalLedCount;i<SlotCount;++i)
+            assert(idle[i] == (Color{0,0,0}));
+        assert(idle[0] == P93Signals::IdleRainbow(step+8)[0]);
+    }
+
+    std::cout << "P93 persistent alert palettes, queued cycles and idle rainbow: PASS" << std::endl;
     std::cout << "P93 eight physical LEDs, customizable beacon colors: PASS" << std::endl;
     return 0;
 }

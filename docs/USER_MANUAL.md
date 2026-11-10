@@ -10,6 +10,10 @@ A perfectly respectable RGB gaming mouse had eight lights, but wasn't allowed to
 
 Hardware is often surprisingly similar across gaming mice. Investigate USB/HID controller IDs, collection IDs, feature report sizes and vendor RGB commands; sometimes a related model can use comparable control logic. The **present DLL supports only the exact Bloody P93 USB/HID identity**. Never assume a matching command layout solely from a familiar-looking mouse or transmit unknown vendor commands without verifying them first.
 
+## Persistent notifications and idle animation (v0.5)
+
+Alerts stay active until acknowledged with Ctrl + Shift + F12 (from the ntfy bridge), the Acknowledge all alerts button in OpenRGB, or the local ACK command. The bounded queue rotates different event-color pairs. All eight LEDs keep cycling a muted rainbow when no pending event remains. [Details and full pattern matrix](PERSISTENT_ALERTS.md).
+
 ## 1. Requirements and installation
 
 **Windows 10/11, OpenRGB 1.1**, Bloody P93 gaming mouse (USB `09DA:31DE`).
@@ -61,15 +65,15 @@ The default effect has **two complementary groups**. It is more interesting than
 | **A** | **1 + 4**, the wheel and the LED directly behind it | 2, 3, 5, 6, 7, 8 |
 | **B** | **2 + 3 + 5 + 6 + 7 + 8**, perimeter and logo | 1, 4 |
 
-Go to **Settings → Bloody P93**. Adjust group A/B slot numbers or **Beacon interval** (120–2000 ms), then check **Flashing beacon**. To stop, uncheck it or click **Restore selected OpenRGB colors**.
+Go to **Settings → Bloody P93**. Adjust group A/B slot numbers or **Beacon interval** (400–2000 ms), then check **Flashing beacon**. To stop, uncheck it or click **Restore selected OpenRGB colors**.
 
 These groups alternate center versus perimeter, **not literal left versus right**. Beacon flashing does *not* resume automatically after restarting OpenRGB.
 
 ### Customize colors and flashing speed
 
-Go to **Settings → Bloody P93**. Press **Group A color** and **Group B color** to open separate color-picker dialogs. Set colors for each group; the two color selections are persisted across application restarts. **Beacon interval** (120–2000 milliseconds) controls the alternation rate. Low values flash faster; use moderate rates if flashing is distracting.
+Go to **Settings → Bloody P93**. Press **Group A color** and **Group B color** to open separate color-picker dialogs. Set colors for each group; the two color selections are persisted across application restarts. **Beacon interval** (400–2000 milliseconds) controls the alternation rate. Low values flash faster; use moderate rates if flashing is distracting.
 
-Manual beacon and `ALERT` use the saved group colors. `ERROR` temporarily flashes red regardless of the saved colors; `SUCCESS` briefly lights the eight LEDs green.
+Manual beacons use saved colors. Persistent alerts use category color pairs until acknowledged, with rainbow idle lighting after acknowledgement.
 
 ## 5. Notifications
 
@@ -81,15 +85,15 @@ The repository includes a PowerShell helper:
 .\Send-P93Notification.ps1 -Event ALERT
 .\Send-P93Notification.ps1 -Event ERROR
 .\Send-P93Notification.ps1 -Event SUCCESS
-.\Send-P93Notification.ps1 -Event STOP
+.\Send-P93Notification.ps1 -Event ACK
 ```
 
 | Command | Outcome |
 |---|---|
-| `ALERT` / `NOTICE` | Alternating yellow beacon for 5 seconds |
-| `ERROR` | Alternating red beacon for 5 seconds |
-| `SUCCESS` | Eight LEDs glow green for 1.8 seconds |
-| `STOP` | Stop effects and restore your selected RGB colors |
+| `ALERT` / `NOTICE` | Persistent red/blue warning until ACK |
+| `ERROR` | Persistent red/yellow warning until ACK |
+| `SUCCESS` | Persistent green/white completion until ACK |
+| `STOP` | Acknowledge alerts and resume idle rainbow |
 
 A local script, task monitor, or ntfy client can invoke this helper when an event occurs. The plugin **does not directly connect to ChatGPT or subscribe to an ntfy server**.
 

@@ -12,6 +12,10 @@ Projekt on vabavaraline OpenRGB 1.1 laiendus Bloody P93 hiirele. Ingliskeelne al
 
 [**Lähtekood GitHubis**](https://github.com/liikane/openrgb-bloody-p93) · [Allalaadimine](https://github.com/liikane/openrgb-bloody-p93/releases) · [English](README.md) · [Kasutusjuhend](docs/KASUTUSJUHEND.md)
 
+## Uus: püsiv vilkur ja tavavärvid (v0.5)
+
+Kui arvutist eemal olles tuleb häire, jääb hiir vilkuma. Kui saabub kaks eri teadet, vahelduvad nende värvipaarid. Kinnita teated klahvidega Ctrl + Shift + F12 või OpenRGB nupuga Acknowledge all alerts. Pärast kinnitamist ei jää hiir pimedaks: kõik kaheksa LED-i näitavad pidevalt pöörlevat värvijada. [Täpsem juhend](docs/PERSISTENT_ALERTS.md).
+
 ## Kas ka teiste tootjate hiirtega?
 
 Tasub katsetada ja uurida: eri tootjate mängurihiirtel võib olla sarnane USB/HID-kontroller ja RGB-valgustuse protokoll. Võrdle kõigepealt USB VID/PID tunnuseid, HID-kogumeid, aruannete pikkust ja tootja rakenduse valgustuskäske. **Ära saada Bloody P93 käske tundmatule hiirele.** See plugin toetab praegu ainult Bloody P93 mudelit `09DA:31DE`; muud seadmed vajavad eraldi valideeritud tuge.
@@ -30,16 +34,16 @@ Kõige nähtavam on **LED 1 ehk rullik**. Hiire logo valgustavad **7 ja 8 koos**
 
 Esialgne efekt vaheldub kahe grupi vahel:
 
-- **A: LED 1 + 4** — rullik ja kolme rulliku taga asuv LED.
+- **A: LED 1 + 4** — rullik ja vahetult selle taga olev LED.
 - **B: LED 2 + 3 + 5 + 6 + 7 + 8** — ülejäänud valgustid, sh logo.
 
 Kollane vilgub ühes grupis, siis teises. Kiirus on seadistatav. Arvutil pole sireeni ja hiirega liikluses eelisõigust ka ei saa, aga tähelepanu suudab see küll tõmmata.
 
 ## Värvid ja vilkumiskiirus
 
-Ava **Settings → Bloody P93**. Väljad **Group A color** ja **Group B color** avavad kumbki värvivalikudialoogi. Mõlemale vilkumisgrupile saad määrata eri värvi, näiteks A kollaseks ja B siniseks. **Beacon interval** määrab vaheldumise kiiruse 120–2000 ms; väiksem number tähendab kiiremat vilkumist. Seaded salvestatakse.
+Ava **Settings → Bloody P93**. Väljad **Group A color** ja **Group B color** avavad kumbki värvivalikudialoogi. Mõlemale vilkumisgrupile saad määrata eri värvi, näiteks A kollaseks ja B siniseks. **Beacon interval** määrab vaheldumise kiiruse 400–2000 ms; väiksem number tähendab kiiremat vilkumist. Seaded salvestatakse.
 
-Kohalik `ALERT` kasutab sinu värve, `ERROR` vilgutab punast ja `SUCCESS` rohelist. Pärast teavitust taastatakse tavavärvid.
+Käsitsi vilkur kasutab valitud värve. Häired vilguvad kuni kinnitamiseni oma värvipaaridega: ERROR punane-kollane, ALERT punane-sinine, SUCCESS roheline-valge ja NOTICE roheline-kollane.
 
 ## Kasutamine
 
@@ -49,7 +53,7 @@ Kohalik `ALERT` kasutab sinu värve, `ERROR` vilgutab punast ja `SUCCESS` roheli
 4. Vaates **Devices → Bloody P93 (community)** saad kaheksat LED-i eraldi värvida.
 5. Vilkumiseks märgi **Flashing beacon** ning soovi korral muuda intervalle ja LED-gruppe.
 
-RGB-lubamine ja värvid jäetakse taaskäivitamisel meelde. Vilkur ise ei hakka automaatselt uuesti vilkuma, sest hiir ei pea omanikku öösel ehmatama.
+RGB-seaded säilivad. Käsitsi käivitatud vilkur ei taastu, kuid kinnitamata häired taastuvad OpenRGB käivitamisel ja vilguvad edasi.
 
 ### Teavitused
 
@@ -59,10 +63,10 @@ Kui lubad **Enable local notification commands**, saab mõni muu kohalik program
 .\Send-P93Notification.ps1 -Event ALERT
 .\Send-P93Notification.ps1 -Event ERROR
 .\Send-P93Notification.ps1 -Event SUCCESS
-.\Send-P93Notification.ps1 -Event STOP
+.\Send-P93Notification.ps1 -Event ACK
 ```
 
-`ALERT` vilgutab kollast, `ERROR` punast, `SUCCESS` paneb kõik kaheksa LED-i ajutiselt roheliselt särama. Võimalik on siduda see ntfy või kohalike tööskriptidega. **ChatGPT vastuse valmimist plugin ise automaatselt ei tuvasta** — selleks peab eraldi sündmuse allikas käsu käivitama.
+`ALERT` vilgutab kollast, `ERROR` punast, `SUCCESS` paneb kõik kaheksa LED-i rohelise-valgega vilkuma kuni kinnitamiseni. Võimalik on siduda see ntfy või kohalike tööskriptidega. **ChatGPT vastuse valmimist plugin ise automaatselt ei tuvasta** — selleks peab eraldi sündmuse allikas käsu käivitama.
 
 ## Tehnika ja juhendid
 

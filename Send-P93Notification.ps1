@@ -3,7 +3,7 @@
 # No internet, no global hooks, no HID device modification from this script.
 param(
     [Parameter(Mandatory=$true)]
-    [ValidateSet('ALERT','ERROR','NOTICE','SUCCESS','STOP')]
+    [ValidateSet('ALERT','ERROR','NOTICE','SUCCESS','STOP','ACK')]
     [string]$Event
 )
 $ErrorActionPreference = 'Stop'

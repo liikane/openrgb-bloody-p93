@@ -6,6 +6,10 @@ A minimal local notification bridge that subscribes to **ntfy** messages and a f
 
 This is a small interim integration. The eventual standalone **Vilgutaja** app and OpenRGB-wide bridge share the planned roadmap: [#6](https://github.com/liikane/openrgb-bloody-p93/issues/6), [#7](https://github.com/liikane/openrgb-bloody-p93/issues/7), [#8](https://github.com/liikane/openrgb-bloody-p93/issues/8).
 
+### Uus: teavituse kinnitamise kiirklahv
+
+Taustasild registreerib ainult Ctrl + Shift + F12 kiirklahvi Windows RegisterHotKey API kaudu. Ei kasutata globaalset klaviatuurihooki ega salvestata klahvivajutusi. Kombinatsioon saadab OpenRGB-le ACK-käsu, mis eemaldab ootel teavitused ja alustab kaheksa LED-i värvianimatsiooni. Alternatiiv on OpenRGB Acknowledge all alerts nupp. [Teavituste tabel](../../docs/PERSISTENT_ALERTS.md).
+
 ## Eestikeelne lühijuhend
 
 LAURIDELLis kasutab sild juba olemasolevat ntfy kanali seadistusfaili `Portable\Automation\Summary\settings.json`. Kanali nime või parooli **ei salvestata GitHubi projekti**. Windowsis käivitatakse taustaprogramm `pythonw.exe` abil, nii et käsureaaken ei jää ette.
@@ -46,9 +50,9 @@ Paigaldus-/eemaldusskript muudab üksnes nimega **True Mouse Art Notification Br
 | NtFy sõnum | RGB sündmus |
 |---|---|
 | `Tags: success`, `p93_success` või pealkiri `valmis`/`done` | `SUCCESS` — roheline |
-| `Tags: error`, `p93_error` või pealkiri `viga`/`failed` | `ERROR` — punane vilkur |
-| `Tags: warning`, `p93_alert` või kõrge `Priority: 4/5` | `ALERT` — sinu A/B värvides vilkur |
-| Tavaline teade (`Priority: 3`) | `NOTICE` — A/B vilkur |
+| `Tags: error`, `p93_error` või pealkiri `viga`/`failed` | `ERROR` — püsiv punane-kollane |
+| `Tags: warning`, `p93_alert` või kõrge `Priority: 4/5` | `ALERT` — püsiv punane-sinine |
+| Tavaline teade (`Priority: 3`) | `NOTICE` — püsiv roheline-kollane |
 | Vaikne teade (`Priority: 1/2`) | Ignoreeritakse, välja arvatud erimärgise korral |
 
 Teavituse **teksti ja pealkirja ei saadeta hiirele ega salvestata logisse**. Sild vaatab ainult pealkirja märksõnu, silte ja prioriteeti, et valida üks viiest sündmusekoodist. ntfy tellimuse striim kasutab HTTPS-i ja olemasoleva kanali õigusi. Hiirele liigub ainult kohalik UDP sündmusekood.

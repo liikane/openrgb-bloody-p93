@@ -14,6 +14,10 @@ What if a running task could finish and the mouse could glow green? What if an e
 
 **Developed by [liikane](https://github.com/liikane)** · [Releases](https://github.com/liikane/openrgb-bloody-p93/releases) · [Eesti keeles](README.et.md) · [Manual](docs/USER_MANUAL.md)
 
+## New: persistent notification beacon (v0.5)
+
+An event does not disappear after five seconds. If two different events arrive, their different color pairs rotate until you acknowledge them using the OpenRGB Acknowledge button or the global shortcut Ctrl + Shift + F12. Acknowledging resumes an eight-LED rainbow animation instead of switching the mouse off. Pending categories also survive OpenRGB restarts. [Full user guide](docs/PERSISTENT_ALERTS.md).
+
 ## Other mice? Try investigating, not blindly applying commands
 
 Many gaming mice use similar USB/HID controller families, even across different brands. It is worth **researching** whether your mouse has comparable LED lighting hardware and protocol structure. Start by identifying its USB VID/PID, HID collections, Usage Page, report length, and the original manufacturer's RGB commands. **Do not send P93 reports to an unverified mouse.** The plugin intentionally supports **Bloody P93 (09DA:31DE)** only; supporting other models requires separate capture, verification, tests, and an explicit device entry.
@@ -29,7 +33,7 @@ The P93 has **8 physical RGB LEDs**, each available individually in OpenRGB, not
 - **Phase A:** LEDs **1 + 4** — wheel and the area immediately behind the wheel.
 - **Phase B:** LEDs **2 + 3 + 5 + 6 + 7 + 8** — front, sides, rear and logo.
 
-Both phases are yellow initially; the unselected LEDs go dark. You can change the interval (120–2000 ms) or edit the groups in the plugin. The effect is a center/perimeter beacon, not a literal left/right emergency-vehicle lightbar.
+Both phases are yellow initially; the unselected LEDs go dark. You can change the interval (400–2000 ms) or edit the groups in the plugin. The effect is a center/perimeter beacon, not a literal left/right emergency-vehicle lightbar.
 
 [Exact LED positions, HID slot numbers and RGB byte offsets](docs/LED_MAP.md)
 
@@ -40,16 +44,16 @@ Both phases are yellow initially; the unselected LEDs go dark. You can change th
 | OpenRGB detects Bloody P93 (`09DA:31DE`) | Tested on hardware |
 | Change RGB color in the OpenRGB GUI | Tested on hardware |
 | Eight individually addressable LED controls | Implemented; owner mapped positions |
-| Alternating two-group beacon | HID output tested; revised 1+4 / remaining grouping requires visual confirmation |
+| Alternating two-group beacon | HID output tested; verified on the real mouse |
 | Local event commands `ALERT`, `ERROR`, `SUCCESS`, `STOP` | HID output tested |
 | Remember settings when OpenRGB restarts | Tested in v0.2.1; retains RGB opt-in, slot colors, groups, interval |
 | Preserve Bloody WorkShop button macros | Plugin never writes button mappings or firmware; previous physical button test passed |
 
 ### Customize the beacon
 
-Under **Settings → Bloody P93**, choose **Group A color** and **Group B color**. Either button opens a normal Windows/Qt color-picker dialog. You can choose different colors for the two alternating LED groups; the colors survive a restart. **Beacon interval** is the existing speed field (120–2000 ms): a smaller number means faster alternation.
+Under **Settings → Bloody P93**, choose **Group A color** and **Group B color**. Either button opens a normal Windows/Qt color-picker dialog. You can choose different colors for the two alternating LED groups; the colors survive a restart. **Beacon interval** is the existing speed field (400–2000 ms): a smaller number means faster alternation.
 
-Manual beacons and `ALERT` use your chosen colors. `ERROR` temporarily overrides both to red and `SUCCESS` shows green. Normal colors return after the notification.
+Manual beacon uses custom colors. Notifications persist with separate red/yellow, red/blue, green/white and green/yellow category palettes until acknowledged.
 
 ## Install and try
 
@@ -60,17 +64,17 @@ Manual beacons and `ALERT` use your chosen colors. `ERROR` temporarily overrides
 5. In **Devices → Bloody P93 (community)** change any of the **eight** LED colors.
 6. For the beacon, return to **Settings → Bloody P93**, adjust the groups or interval and check **Flashing beacon**.
 
-The beacon does not automatically start flashing after a restart, to avoid unwanted surprises. Notifications are disabled unless you opt in.
+The manual beacon does not resume after restart, but pending alerts DO resume. Rainbow idle lighting is enabled by default; notifications remain opt-in.
 
 ## Let the computer signal something
 
 Optionally enable **Local notification commands** in plugin settings. The plugin listens only on the local computer at `127.0.0.1:45893`.
 
 ```powershell
-.\Send-P93Notification.ps1 -Event ALERT    # Yellow group beacon for 5 seconds
-.\Send-P93Notification.ps1 -Event ERROR    # Red group beacon for 5 seconds
-.\Send-P93Notification.ps1 -Event SUCCESS  # All eight LEDs green for 1.8 seconds
-.\Send-P93Notification.ps1 -Event STOP     # Restore OpenRGB-selected colors
+.\Send-P93Notification.ps1 -Event ALERT    # Persistent red/blue
+.\Send-P93Notification.ps1 -Event ERROR    # Persistent red/yellow
+.\Send-P93Notification.ps1 -Event SUCCESS  # Persistent green/white
+.\Send-P93Notification.ps1 -Event ACK     # Acknowledge and resume eight-LED rainbow
 ```
 
 A PowerShell job, local ntfy client, task monitor, or another automation can invoke the sender. **The plugin itself does not monitor ChatGPT or subscribe to external ntfy servers.** Those integrations need their own triggering component.

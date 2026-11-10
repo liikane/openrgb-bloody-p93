@@ -46,7 +46,7 @@ class NtfyBridgeTests(unittest.TestCase):
         self.assertTrue(events.empty(), "Old cached messages should not trigger lights")
 
     def test_no_unexpected_event_output(self):
-        self.assertEqual(m.VALID_EVENTS, {"ALERT", "ERROR", "NOTICE", "SUCCESS", "STOP"})
+        self.assertEqual(m.VALID_EVENTS, {"ALERT", "ERROR", "NOTICE", "SUCCESS", "STOP", "ACK"})
 
     def test_expected_windows_events_only(self):
         self.assertEqual({(channel, eid) for channel, eid, _ in m.SYSTEM_EVENTS},

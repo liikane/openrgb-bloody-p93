@@ -39,7 +39,7 @@ SYSTEM_EVENTS = (
     ("Microsoft-Windows-WindowsUpdateClient/Operational", 19, "SUCCESS"),
     ("Microsoft-Windows-WindowsUpdateClient/Operational", 20, "ERROR"),
 )
-VALID_EVENTS = {"ALERT", "NOTICE", "ERROR", "SUCCESS", "STOP"}
+VALID_EVENTS = {"ALERT", "NOTICE", "ERROR", "SUCCESS", "STOP", "ACK"}
 
 
 def setup_logger() -> logging.Logger:
@@ -146,6 +146,47 @@ class WindowsEventSource:
                 self.dll.EvtClose(handle)
         self.handles.clear()
         self.callbacks.clear()
+
+
+
+def run_ack_hotkey(shutdown: threading.Event, outgoing: queue.Queue, log: logging.Logger):
+    """Register Ctrl+Shift+F12 as a global acknowledgement hotkey.
+
+    This uses RegisterHotKey and the Windows message queue, not a keyboard hook:
+    no key presses are recorded, inspected, or forwarded.
+    """
+    if os.name != "nt":
+        return
+    from ctypes import wintypes
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
+    user32.RegisterHotKey.argtypes = [wintypes.HWND, ctypes.c_int,
+                                      wintypes.UINT, wintypes.UINT]
+    user32.RegisterHotKey.restype = wintypes.BOOL
+    user32.UnregisterHotKey.argtypes = [wintypes.HWND, ctypes.c_int]
+    user32.UnregisterHotKey.restype = wintypes.BOOL
+    user32.GetMessageW.argtypes = [ctypes.POINTER(wintypes.MSG),
+                                   wintypes.HWND, wintypes.UINT, wintypes.UINT]
+    user32.GetMessageW.restype = ctypes.c_int
+    hotkey_id = 0x93
+    MOD_CTRL_SHIFT_NOREPEAT = 0x0002 | 0x0004 | 0x4000
+    VK_F12 = 0x7B
+    if not user32.RegisterHotKey(None, hotkey_id, MOD_CTRL_SHIFT_NOREPEAT, VK_F12):
+        log.warning("Global acknowledge hotkey unavailable (another app may use it)")
+        return
+    log.info("Global acknowledgement hotkey registered: Ctrl+Shift+F12")
+    try:
+        msg = wintypes.MSG()
+        while not shutdown.is_set():
+            result = user32.GetMessageW(ctypes.byref(msg), None, 0, 0)
+            if result <= 0:
+                break
+            if msg.message == 0x0312 and msg.wParam == hotkey_id:
+                try:
+                    outgoing.put_nowait(("ACK", "hotkey"))
+                except queue.Full:
+                    log.warning("Event buffer full; acknowledgement not queued")
+    finally:
+        user32.UnregisterHotKey(None, hotkey_id)
 
 
 class NtfySource:
@@ -291,6 +332,11 @@ def run_bridge(config_path: Path, windows_events: bool, ntfy_events: bool,
         signal.signal(signal.SIGINT, stop)
         signal.signal(signal.SIGTERM, stop)
     worker = None
+    if os.name == "nt":
+        hotkey_worker = threading.Thread(
+            target=run_ack_hotkey, args=(shutdown, q, log),
+            daemon=True, name="p93-acknowledge-hotkey")
+        hotkey_worker.start()
     if cfg:
         source = NtfySource(cfg, q, shutdown, log)
         worker = threading.Thread(target=source.run, daemon=True, name="ntfy-stream")

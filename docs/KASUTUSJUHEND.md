@@ -12,6 +12,10 @@ See vabavaraline plugin võimaldab juhtida hiire kaheksat valgustit eraldi, pann
 
 Erinevate tootjate mängurihiirtel võib olla väga sarnase ehitusega USB/HID-kontroller ja RGB-valgustuse juhtimine. Proovida tasub eelkõige **uurimist ja protokollide võrdlust** (VID/PID, HID-liides, aruande pikkus ja tootjatarkvara käsud). See plugin toetab **ainult Bloody P93** mudelit ning sobimatule hiirele ei tohi selle RGB-käske pimesi saata. Iga uus mudel vajab eraldi kontrolli.
 
+## Uus v0.5: püsivad teavitused ja värviline tavaolek
+
+Häire jääb nähtavaks kuni teate kinnitamiseni. Kui saabub mitu sündmust, näitab hiir nende erinevaid vilkumismustreid kordamööda. Kinnita teated Ctrl + Shift + F12 klahvikombinatsiooni või OpenRGB nupuga Acknowledge all alerts. Pärast kinnitamist vahetavad kõik kaheksa LED-i värve järjest. [Täpne selgitus](PERSISTENT_ALERTS.md).
+
 ## 1. Nõuded ja paigaldamine
 
 - Windows 10/11, OpenRGB **1.1**, hiir **Bloody P93** (USB `09DA:31DE`).
@@ -62,15 +66,15 @@ Plugin ei piirdu kõigi tulede korraga sisse/välja lülitamisega. Selle algne k
 | **A** | **1 + 4** – rullik ja rulliku tagune LED | 2, 3, 5, 6, 7, 8 |
 | **B** | **2 + 3 + 5 + 6 + 7 + 8** – ülejäänud, sh logo | 1, 4 |
 
-Ava **Settings → Bloody P93**. Seal saad muuta gruppide numbreid ja **Beacon interval** vahemikus 120–2000 ms, seejärel märkida **Flashing beacon**. Sisselülitatud vilkur vaheldub kahe grupi vahel. Lõpetamiseks eemalda linnuke või vajuta **Restore selected OpenRGB colors**.
+Ava **Settings → Bloody P93**. Seal saad muuta gruppide numbreid ja **Beacon interval** vahemikus 400–2000 ms, seejärel märkida **Flashing beacon**. Sisselülitatud vilkur vaheldub kahe grupi vahel. Lõpetamiseks eemalda linnuke või vajuta **Restore selected OpenRGB colors**.
 
 See on esialgu rulliku/rulliku taguse LED-i ja ülejäänud tulede *vahelduv vilkumine*, mitte kahe külje täpne vasak-parem režiim. Vilkur **ei hakka pärast programmi taaskäivitust automaatselt vilkuma**.
 
 ### Vilkuri värvide ja kiiruse seadistamine
 
-Ava **Settings → Bloody P93**. Nupp **Group A color** avab A-grupi värvidialoogi ja **Group B color** B-grupi oma. Nii saad näiteks rulliku ja selle taguse LED-i panna kollaselt, ülejäänud hiire siniselt vilkuma. **Beacon interval** määrab vaheldumise kiiruse **120–2000 ms**; väiksem arv tähendab kiiremat vilkumist. Värvid ja kiirus jäetakse meelde.
+Ava **Settings → Bloody P93**. Nupp **Group A color** avab A-grupi värvidialoogi ja **Group B color** B-grupi oma. Nii saad näiteks rulliku ja selle taguse LED-i panna kollaselt, ülejäänud hiire siniselt vilkuma. **Beacon interval** määrab vaheldumise kiiruse **400–2000 ms**; väiksem arv tähendab kiiremat vilkumist. Värvid ja kiirus jäetakse meelde.
 
-Käsitsi käivitatud vilkur ja `ALERT` kasutavad sinu valitud värve. `ERROR` vilgutab ajutiselt punast ning `SUCCESS` rohelist.
+Käsitsi vilkur kasutab enda värve. Teavitused vilguvad püsivalt: ERROR punane-kollane, ALERT punane-sinine, SUCCESS roheline-valge, NOTICE roheline-kollane.
 
 ## 5. Teavitused ja kiirkäsud
 
@@ -82,15 +86,15 @@ Laadi projekt GitHubist alla ja käivita selle kaustas:
 .\Send-P93Notification.ps1 -Event ALERT
 .\Send-P93Notification.ps1 -Event ERROR
 .\Send-P93Notification.ps1 -Event SUCCESS
-.\Send-P93Notification.ps1 -Event STOP
+.\Send-P93Notification.ps1 -Event ACK
 ```
 
 | Käsk | Mõju |
 |---|---|
-| `ALERT` / `NOTICE` | Kollane kahe grupi vilkumine 5 sekundit |
-| `ERROR` | Punane kahe grupi vilkumine 5 sekundit |
-| `SUCCESS` | Kõik kaheksa LED-i roheliseks 1,8 sekundiks |
-| `STOP` | Peatab efekti ja taastab OpenRGB valitud värvid |
+| `ALERT` / `NOTICE` | Punane-sinine või roheline-kollane kuni kinnitamiseni |
+| `ERROR` | Punane-kollane kuni kinnitamiseni |
+| `SUCCESS` | Roheline-valge kuni kinnitamiseni |
+| `STOP` | Kinnitab häired ja käivitab 8 LED-i värvianimatsiooni |
 
 Näiteks saab sinu kohalik ntfy-sõnumit töötlev skript käivitada `-Event ALERT`. Plugin ise **ei ühendu ntfy ega ChatGPT-ga**: selleks tuleb sündmuse tuvastus ja käsu väljakutse eraldi seadistada.
 

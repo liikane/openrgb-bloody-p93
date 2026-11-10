@@ -15,6 +15,7 @@
 #include <QStringList>
 #include "OpenRGBPluginInterface.h"
 #include "P93Hid.h"
+#include "P93Signals.h"
 
 class BloodyP93Plugin final : public QObject, public OpenRGBPluginInterface
 {
@@ -44,6 +45,11 @@ private:
     void RegisterDevice();
     void ApplyColor();
     void TickBeacon();
+    void TickIdle();
+    void StartIdle();
+    void AddNotification(P93Signals::Event kind);
+    void AcknowledgeAll();
+    void UpdatePendingLabel();
     void UpdateColorButtons();
     bool ParseGroups(std::vector<std::size_t>& left, std::vector<std::size_t>& right);
     void HandleNotification();
@@ -64,7 +70,11 @@ private:
     QLineEdit* left_slots_ = nullptr;
     QLineEdit* right_slots_ = nullptr;
     QTimer* beacon_timer_ = nullptr;
-    QTimer* notification_timeout_ = nullptr;
+    QTimer* idle_timer_ = nullptr;
+    QCheckBox* idle_enabled_ = nullptr;
+    QSpinBox* idle_interval_ = nullptr;
+    QLabel* pending_label_ = nullptr;
+    QPushButton* acknowledge_button_ = nullptr;
     QCheckBox* notifications_ = nullptr;
     QTimer* notification_poller_ = nullptr;
     QTimer* color_persistence_timer_ = nullptr;
@@ -72,7 +82,9 @@ private:
     std::uintptr_t notification_socket_handle_ = ~std::uintptr_t{0};
     QColor beacon_color_a_{255, 210, 0};
     QColor beacon_color_b_{255, 210, 0};
-    bool notification_red_override_ = false;
+    std::vector<P93Signals::Event> pending_events_;
+    std::size_t notification_tick_ = 0;
+    std::size_t idle_step_ = 0;
     bool beacon_phase_ = false;
     int next_slot_ = 0;
     std::atomic<bool> enabled_{false};
