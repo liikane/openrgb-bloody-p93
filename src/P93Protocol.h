@@ -5,7 +5,9 @@
 
 namespace P93Protocol
 {
+// The report has 15 RGB triples; physical P93 lighting uses only slots 1-8.
 constexpr std::size_t SlotCount = 15;
+constexpr std::size_t PhysicalLedCount = 8;
 using Report = std::array<std::uint8_t, 64>;
 using Color = std::array<std::uint8_t, 3>;
 using Slots = std::array<Color, SlotCount>;
@@ -45,15 +47,15 @@ inline Report StaticColor(std::uint8_t red, std::uint8_t green, std::uint8_t blu
     return ColorSlots(slot_colors);
 }
 
-// A first hypothesis, not a verified physical left/right map.
-// Users should identify the physical meaning of every slot.
+// Default beacon: the visible wheel + extra-button area versus the perimeter.
+// Slots are 1-based in the user interface; zero-based in this packet.
 inline Slots SplitBeacon(bool firstGroupLit, Color activeColor = {255, 210, 0})
 {
     Slots slot_colors{};
     for(std::size_t i = 0; i < SlotCount; ++i)
     {
-        const bool firstGroup = i < 7;
-        if(firstGroup == firstGroupLit)
+        const bool firstGroup = (i == 0 || i == 3);
+        if(i < PhysicalLedCount && firstGroup == firstGroupLit)
             slot_colors[i] = activeColor;
     }
     return slot_colors;

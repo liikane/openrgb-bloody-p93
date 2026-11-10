@@ -1,104 +1,110 @@
-# Bloody P93 — documented RGB HID commands
+# True Mouse Art — Bloody P93 HID RGB protocol
 
-This document records a **community-derived, experimentally verified** subset of the HID protocol. It is not manufacturer documentation. The procedure was tested on a real Bloody P93 (USB `09DA:31DE`, HID `MI_02/COL04`).
+A documented community-derived implementation of RGB control for the **Bloody P93** mouse. It is **not** an official manufacturer's protocol specification. The device owner mapped the LED positions physically on 10 November 2026; packet format was verified using the Windows HID API and prior actual RGB color changes.
 
-## Device identity and transport
+## 1. Target and boundaries
 
-| Field | Value |
-| --- | --- |
-| USB VID/PID | `0x09DA / 0x31DE` |
-| HID collection | `MI_02/COL04` |
+| Parameter | Value |
+|---|---|
+| Model | Bloody P93 |
+| USB VID / PID | `0x09DA / 0x31DE` |
+| HID collection | `MI_02 / COL04` |
 | Usage page / usage | `0xFF32 / 0x0218` |
-| Feature report length | 64 bytes |
-| Report ID | `0x07` |
-| Transport | Windows HID `HidD_SetFeature`, no custom driver |
-| Read-only identity verification | Windows `HidD_GetFeature`: starts with `07 03 06` |
+| Feature report | **ID 0x07**, exactly **64 bytes** |
+| Transport | Windows HID `HidD_SetFeature`; no custom driver |
+| Native HID RGB fields | **15 RGB triplets** in the report |
+| Actual physical RGB LEDs | **8** |
+| Implemented/visible LEDs | **1–8**; report triplets **9–15 are zero-filled** |
 
-**Only verified RGB report types are supported.** Do not send untested report values to the mouse: other vendor-specific commands may change stored profiles or firmware.
+Before writing, the plugin checks the exact device ID, collection, HID usage, report length, and response prefix. It does not send DPI, macro, button, bootloader or firmware instructions.
 
-## Feature report layout (64 bytes)
+## 2. Commands
 
-| Byte offset | Value | Meaning |
-| --- | --- | --- |
-| 0 | `07` | HID Report ID |
-| 1 | `03` | Vendor command family |
-| 2 | `06` | Vendor command family |
-| 3 | `01`, `00`, or `02` | RGB initialization / direct mode / RGB colors |
-| 4–7 | `00` | Reserved in tested commands |
-| 8–52 | Fifteen RGB triplets | For `07 03 06 02`: 15 x (R,G,B), beginning at byte 8 |
-| 53–63 | `00` | Reserved/unused in tested commands |
+All commands are 64-byte buffers. Byte positions use **zero-based offsets**.
 
-### Command A — enter RGB control mode
+### Initialize RGB
 
-`07 03 06 01 00 00 00 00 00 ... 00` (64 bytes).
-
-### Command B — enable Direct RGB operation
-
-`07 03 06 00 00 00 00 00 01 00 ... 00` (64 bytes).
-
-### Command C — set RGB colors
-
-`07 03 06 02 00 00 00 00 [R1 G1 B1] ... [R15 G15 B15] 00 ... 00` (64 bytes).
-
-Examples:
-
-- Purple all slots: R=160, G=0, B=255 = `#A000FF`.
-- Yellow all slots: `#FFD200`.
-- Solid red: `#FF0000`.
-- All off: `#000000`.
-- Beacon effect: send an array with group A slots yellow / group B off, then alternate; delays are software-controlled.
-
-The byte-level layout is verified by reading back the HID report and successfully changing a real P93 mouse to static purple and performing red/green flashing. **The mapping from each of the 15 HID color slots to physical mouse LEDs is not yet fully documented.** The fact that a mouse supports animated effects does not by itself establish whether every physical LED corresponds to a unique report slot.
-
-## Sequence and examples
-
-Use `RgbMode()` and `DirectInit()` once when opening a device, then `ColorSlots()` for each frame. The implementation is in [P93Protocol.h](../src/P93Protocol.h) and [P93Hid.cpp](../src/P93Hid.cpp).
-
-### Changing individual color slots
-
-The OpenRGB Devices screen presents 15 labelled **HID slot 1–15** entries in the experimental v0.2 plugin. Select a slot and choose a color, or use **Identify next LED slot** to illuminate one slot at a time and record which physical region responds.
-
-### Beacon animation
-
-The plug-in alternates colors in two user-selectable **slot groups A and B** (default slots 1–7 versus 8–15). Users should identify the real physical mapping before treating groups as “left” and “right”.
-
-Interval is adjustable from 120 to 2000 milliseconds. The animation uses known RGB color reports only; it does not change mouse button profiles.
-
-## Local notification protocol
-
-The plugin can optionally listen on loopback UDP **127.0.0.1:45893**. The listener is **disabled by default** and only starts when both **Enable RGB control** and **Enable local notification commands** are checked.
-
-One ASCII datagram per event (no authentication; local machine only):
-
-| Datagram | Result |
-| --- | --- |
-| `P93:ALERT` | 5 seconds of alternating yellow groups |
-| `P93:NOTICE` | 5 seconds of alternating yellow groups |
-| `P93:ERROR` | 5 seconds of alternating red groups |
-| `P93:SUCCESS` | 1.8 seconds of solid green |
-| `P93:STOP` | Stop animation, restore the current OpenRGB color selection |
-
-PowerShell usage from the repo:
-
-```powershell
-.\Send-P93Notification.ps1 -Event ALERT
-.\Send-P93Notification.ps1 -Event SUCCESS
+```text
+Offset  00 01 02 03 04 05 06 07 08 ...
+Values  07 03 06 01 00 00 00 00 00 ... zero up to 63
 ```
 
-A local program, scheduled task, or ntfy client can invoke this script upon a relevant event. The plugin does **not** log keystrokes, contact any cloud service, or automatically subscribe to an ntfy server.
+Enter RGB control mode, once upon device connection or when direct mode needs reinitialization.
 
-## Safety and limitations
+### Enable Direct control
 
-- Feature reports are **RGB-only**; this software never invokes profile-writing, macro reassignment, firmware update or bootloader commands.
-- The earlier physical test confirmed visible RGB changes and continued mouse-button operation.
-- The 15-slot map, effect timing and notification integration require additional physical verification in the v0.2 build.
-- Opening Bloody WorkShop 8 concurrently may overwrite RGB colors; close its lighting editor during tests, without changing existing button mappings.
-- Send untrusted data only after explicit local notification enablement; local UDP listener intentionally has no network exposure beyond loopback.
-- This is an independently derived community protocol, **not a manufacturer-supported API**.
+```text
+Offset  00 01 02 03 04 05 06 07 08 09 ...
+Values  07 03 06 00 00 00 00 00 01 00 ... zero up to 63
+```
 
-## v0.2.1 runtime and configuration notes
+### Set RGB colors
 
-- The plug-in no longer depends on \`Qt6Network.dll\`. Local notifications use built-in Windows Winsock2, with an opt-in loopback-only UDP listener.
-- Configuration is persisted via Qt's per-user INI QSettings: \`rgbEnabled\`, \`lastColors\` (15 triples), \`groupA\`, \`groupB\`, \`intervalMs\`, \`notificationsEnabled\`.
-- Automatic restore only re-enables RGB control if the matching device is available; **beacon effects do not automatically resume** after OpenRGB restart.
-- Colors are written to the settings file after a short debounce, not once per HID RGB frame, to avoid unnecessary disk activity.
+```text
+Offset  00 01 02 03 04 05 06 07 08 09 10 11 12 13 ... 29 30 31 32 ... 52 53 ... 63
+Values  07 03 06 02 00 00 00 00 R1 G1 B1 R2 G2 B2 ... R8 G8 B8 00 ... 00 00 ... 00
+```
+
+- **Bytes 0–3:** `07 03 06 02` — report ID and RGB-color command.
+- **Bytes 4–7:** four zero/reserved bytes.
+- **Bytes 8–31:** eight 3-byte RGB colors for **physical LEDs 1–8**.
+- **Bytes 32–52:** seven more RGB fields in the *protocol*, but these are **unused by this P93** and remain all zero.
+- **Bytes 53–63:** eleven zero/reserved bytes.
+
+For example, for **LED 1 purple**, set bytes 8,9,10 to `A0 00 FF` (160,0,255). For **LED 4 yellow**, set bytes 17,18,19 to `FF D2 00` (255,210,0). All other bytes keep their defined values.
+
+## 3. Physical LED = SLOT = HID byte map
+
+![Bloody P93 top-view LED schematic](mouse-led-map.svg)
+
+| Physical LED | SLOT (1-based) | Location | R byte | G byte | B byte |
+|---:|---:|---|---:|---:|---:|
+| 1 | 1 | Wheel / middle button | 8 | 9 | 10 |
+| 2 | 2 | Left front | 11 | 12 | 13 |
+| 3 | 3 | Right front | 14 | 15 | 16 |
+| 4 | 4 | Middle, under 3 extra buttons | 17 | 18 | 19 |
+| 5 | 5 | Right middle | 20 | 21 | 22 |
+| 6 | 6 | Left middle | 23 | 24 | 25 |
+| 7 | 7 | Left rear, shared logo lighting | 26 | 27 | 28 |
+| 8 | 8 | Right rear / center, shared logo lighting | 29 | 30 | 31 |
+
+The mouse **logo illuminates through LEDs 7 and 8 together**. LED 1 (wheel) is especially prominent. Slots 9–15 have no physical LEDs and are not displayed as editable devices in OpenRGB.
+
+See [LED_MAP.md](LED_MAP.md) for bilingual location names, examples and exact group assignments.
+
+## 4. True Mouse Art — flashing beacon
+
+The default beacon has two **complementary phases**, alternating every 320 ms initially:
+
+| Phase | Lit yellow `FF D2 00` | Off |
+|---|---|---|
+| **A** | **1 + 4** (wheel and extra-button group) | 2, 3, 5, 6, 7, 8 |
+| **B** | **2 + 3 + 5 + 6 + 7 + 8** | 1, 4 |
+
+The plugin sends one normal color command per phase and changes these groups on a timer. This is **not** a left-right physical split; users may customize groups in the settings. The report still contains 15 fields, but each frame sets only the first eight.
+
+The user can activate flashing manually from the OpenRGB plugin settings or via local `P93:ALERT` / `P93:ERROR` notifications. Previously verified HID patterns used an older 7/8-field grouping; the 1+4 versus six-LED grouping is an updated, separately tested configuration.
+
+## 5. Local notification command interface
+
+An optional, user-enabled local UDP socket on **127.0.0.1:45893** accepts these ASCII messages:
+
+| Data | Effect |
+|---|---|
+| `P93:ALERT` / `P93:NOTICE` | Two groups flashing yellow for 5 s |
+| `P93:ERROR` | Two groups flashing red for 5 s |
+| `P93:SUCCESS` | Eight physical LEDs green for 1.8 s |
+| `P93:STOP` | Stop and restore configured colors |
+
+The listener is **off by default** unless explicitly enabled. It does not contact the internet, watch keyboard activity, or monitor ChatGPT. The repository includes `Send-P93Notification.ps1` for local script integrations.
+
+## 6. Device notes, testing, and safety
+
+- Real P93 hardware has already responded to purple static color, red/green flash, OpenRGB UI RGB changes and HID output queries. Prior notification testing verified that HID reports alternate as expected.
+- C++ unit tests verify the **15-field transport with 8 usable LEDs** and the two-phase default grouping; physical LED locations are mapped by the user.
+- No hardcoded commands outside `07 03 06 01`, `07 03 06 00`, `07 03 06 02` are used. **Do not guess additional vendor commands**; they might change stored profiles or firmware.
+- The plugin uses Windows HID and WinSock APIs without PawnIO, USB capture drivers or other third-party kernel drivers.
+- The user's Bloody WorkShop 8 button configuration is independent of this plugin. Running multiple RGB controllers simultaneously may create visual conflicts.
+- Device mapping evidence is provided in [VALIDATION.md](VALIDATION.md). Source implementation: [P93Protocol.h](../src/P93Protocol.h) and [P93Hid.cpp](../src/P93Hid.cpp).
+
+License: GPL-2.0-or-later. Independent community research, not a manufacturer-endorsed API.

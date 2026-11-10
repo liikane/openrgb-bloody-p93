@@ -1,115 +1,111 @@
-# Bloody P93 RGB Bridge – kasutusjuhend
+# Tegin hiirest vilkuri — kasutusjuhend
 
-**Süsteem:** Windows 10/11, OpenRGB **1.1**, Bloody **P93**.  
-**Plugin:** [GitHub – liikane/openrgb-bloody-p93](https://github.com/liikane/openrgb-bloody-p93)  
-**Allalaadimine:** [Releases](https://github.com/liikane/openrgb-bloody-p93/releases)  
-**Staatus:** kogukonna loodud lisand, Windowsi pärisseadmel proovitud. Pole Bloody või OpenRGB ametlik tarkvara.
+**Bloody P93 hiire OpenRGB plugin**
 
-## 1. Mida see teeb?
+*Arvuti annab hiire LED-idega märku, kui töö on valmis või midagi vajab tähelepanu.*
 
-Lisab OpenRGB seadmete loendisse **Bloody P93 (community)**, et muuta hiire RGB-valgustuse **15 HID-värvikohta** OpenRGB kasutajaliidesest. Plugin kasutab Windowsi olemasolevat HID-liidest ega vaja eraldi USB-draiverit. See **ei kirjuta ümber hiire nupumakrosid, DPI-d ega püsivara**.
+**English project name:** True Mouse Art / Bloody P93 mouse OpenRGB Plugin / *I Turned My Mouse into a Flashing Beacon!*
 
-Testitud seadme USB ID on `09DA:31DE`, kasutatav HID-liides `MI_02/COL04`. Teisi Bloody mudeleid see plugin ei juhi.
+See vabavaraline plugin võimaldab juhtida hiire kaheksat valgustit eraldi, panna need vaheldumisi vilkuma ja reageerida arvutist saadetud teavitustele. Hiirenuppude määranguid, ekraanipildimakrot, DPI-d ega püsivara see ei muuda.
 
-## 2. Paigaldamine
+## 1. Nõuded ja paigaldamine
 
-1. Laadi alla oma OpenRGB 1.1-ga sobiv Windowsi `OpenRGBBloodyP93Plugin.dll` faili versioon [GitHub Releasesist](https://github.com/liikane/openrgb-bloody-p93/releases). Kontrolli, et tegemist oleks selle projekti avaldatud väljalaskega.
-2. Sule OpenRGB **täielikult**, ka süsteemisalvest. Vajaduse korral vali tray-ikooni menüüst **Exit**.
-3. Kopeeri DLL järgmisse kausta (aadressirea kaudu):
-   
-   `%APPDATA%\OpenRGB\plugins\`
+- Windows 10/11, OpenRGB **1.1**, hiir **Bloody P93** (USB `09DA:31DE`).
+- Laadi [GitHubi Releases-lehelt](https://github.com/liikane/openrgb-bloody-p93/releases) uusim sobiv testitud või selgelt märgistatud katseversioon `OpenRGBBloodyP93Plugin.dll`.
+- Sulge OpenRGB, ka süsteemisalvest, ja kopeeri DLL kausta `%APPDATA%\OpenRGB\plugins\`. Vajaduse korral loo kaust. Hoia eelmine DLL alles, et saaksid selle vajadusel taastada.
+- Käivita OpenRGB. Ava **Settings → Bloody P93** ja märgi **Enable RGB control**.
+- Vali **Devices → Bloody P93 (community)**: seal kuvatakse **kaheksa** LED-i.
 
-   Vajaduse korral loo `plugins` kaust. Alternatiivina kasuta OpenRGB enda **Settings → Plugins** importimist.
-4. Käivita OpenRGB uuesti. Plugin lisab seadistustesse vaate **Bloody P93** ning seadmete hulka **Bloody P93 (community)**, kui vastav hiir on ühendatud.
+Plugin ei vaja eraldi USB-draiverit ega PawnIO-d. Windowsi Smart App Control võib allkirjastamata DLL-i blokeerida; kontrolli esmalt faili päritolu ja kontrollsummat. Üldiste Windowsi turvameetmete väljalülitamine pole plugina kasutamise eeltingimus.
 
-DLL-i ei ole vaja registreerida Windowsi süsteemikaustas. Pluginat pole tarvis käivitada administraatorina.
+## 2. Hiire LED-ide skeem
 
-## 3. Esimene kasutuskord
+![Bloody P93 ülaltvaade kaheksa LED-i ja vilkuri gruppidega](mouse-led-map.svg)
 
-1. Ava OpenRGB-s **Settings → Bloody P93**.
-2. Veendu, et näidatakse `Bloody P93 connected`. Kui hiirt ei leita, vajuta **Retry device detection**.
-3. Märgi **Enable RGB control (experimental)**. Alles see lubab valgustuskäskude saatmise.
-4. Mine sakile **Devices** ja vali vasakult **Bloody P93 (community)**.
-5. Vali keskel **All RGB lights** ala (värviline ruut).
-6. Vali parempoolsest värvirattast värv või sisesta **Hex** väljale näiteks `A000FF` (lilla).
-7. Vajuta **Apply Colors To Selection**. Kui kogu valik on juba aktiivne, võib värv muutuda kohe. **Apply All Devices** muudab ka teisi OpenRGB seadmeid, seega kasuta seda vaid teadlikult.
+Skeem näitab LED-ide asukohti hiire ülaltvaates; see pole täpne tootjajoonis. **Kõige silmatorkavam LED on nr 1 ehk rullik.** Logo valgustavad **7 ja 8 koos**.
 
-Näide: lilla = `#A000FF` = R 160, G 0, B 255.
+### LED = SLOT = HID bait
 
-## 4. LED-ide eraldi juhtimine ja vilkur
+HID-käsk sisaldab 64 baiti; LED-i värv on kolmik **R, G, B** alltoodud *nullist algava* baidiofssetiga.
 
-Uus v0.2 plugin näitab OpenRGB **Devices** vaates 15 värvikohta nimega **HID slot 1–15**. Värvikohti saab USB-aruandes eraldi määrata, kuid nende vastavus hiire füüsilistele LED-idele vajab kaardistamist.
+| LED | SLOT | Asukoht | HID R | HID G | HID B |
+|---:|---:|---|---:|---:|---:|
+| **1** | 1 | Keskmine klahv / rullik | 8 | 9 | 10 |
+| **2** | 2 | Vasak ees | 11 | 12 | 13 |
+| **3** | 3 | Parem ees | 14 | 15 | 16 |
+| **4** | 4 | Kolme lisanupu all keskel | 17 | 18 | 19 |
+| **5** | 5 | Parem keskel | 20 | 21 | 22 |
+| **6** | 6 | Vasak keskel | 23 | 24 | 25 |
+| **7** | 7 | Vasak taga; ühtlasi logo | 26 | 27 | 28 |
+| **8** | 8 | Parem taga ja keskel; ühtlasi logo | 29 | 30 | 31 |
 
-1. Ava **Settings → Bloody P93**, luba RGB juhtimine.
-2. Vajuta **Identify next LED slot (yellow)**. Hiire üks protokollikoht süttib kollaselt ja kuvatakse selle number. Korda kuni 15. kohani, märkides üles, milline füüsiline valgus millise numbriga muutub.
-3. Sisesta **Beacon group A** ja **Beacon group B** väljadesse vastavalt hiire kahe külje tegelikud LED-numbrid, eraldades need komadega. Algväärtused on 1–7 ja 8–15; need ei pruugi vastata hiire vasakule ja paremale küljele.
-4. Muuda **Beacon interval** (120–2000 ms) ja märgi **Flashing beacon**. Kollane vilkur vaheldub kahe LED-grupi vahel.
-5. Lõpetamiseks eemalda vilkuri märge ja vajuta vajadusel **Restore selected OpenRGB colors**.
+**Tähtis:** kuigi HID-aruandes on 15 RGB-värvikohta, on P93-l ainult **8 füüsilist LED-i**. Kohad 9–15 jäetakse välja lülitatuks ega ole OpenRGB-s nähtavad. Täpne tabel ja [skeem](LED_MAP.md).
 
-**Teavituste ühendamine:** märgi eraldi **Enable local notification commands**, mis avab ainult sama arvuti pordi `127.0.0.1:45893`. Projekti kaustas käivita PowerShelliga näiteks:
+## 3. Värvide muutmine
+
+Ava **Devices**, vali hiir ning klõpsa soovitud LED-il (1–8). Vali värvirattalt värv või sisesta Hex-väljale väärtus. Vajaduse korral vajuta **Apply Colors To Selection**.
+
+Näited: lilla `A000FF`, roheline `00FF00`, punane `FF0000`, kollane `FFD200`.
+
+Seaded salvestatakse kasutajaprofiili. Viimati valitud kaheksa värvi ja RGB-juhtimise sisselülitamine taastatakse OpenRGB järgmisel käivitamisel. **Saving Not Supported** OpenRGB seadme all tähendab, et hiire püsivara profiile ei kirjutata; tarkvaralisi profiile võib kasutada.
+
+## 4. Vilkur
+
+Plugin ei piirdu kõigi tulede korraga sisse/välja lülitamisega. Selle algne kahefaasiline muster on:
+
+| Faas | Kollaselt põlevad LED-id | Väljas |
+|---|---|---|
+| **A** | **1 + 4** – rullik ja lisanupud | 2, 3, 5, 6, 7, 8 |
+| **B** | **2 + 3 + 5 + 6 + 7 + 8** – ülejäänud, sh logo | 1, 4 |
+
+Ava **Settings → Bloody P93**. Seal saad muuta gruppide numbreid ja **Beacon interval** vahemikus 120–2000 ms, seejärel märkida **Flashing beacon**. Sisselülitatud vilkur vaheldub kahe grupi vahel. Lõpetamiseks eemalda linnuke või vajuta **Restore selected OpenRGB colors**.
+
+See on esialgu rulliku/lisanupupiirkonna ja ülejäänud tulede *vahelduv vilkumine*, mitte kahe külje täpne vasak-parem režiim. Vilkur **ei hakka pärast programmi taaskäivitust automaatselt vilkuma**.
+
+## 5. Teavitused ja kiirkäsud
+
+Kui märgid ka **Enable local notification commands**, kuulab plugin sama arvuti aadressil `127.0.0.1:45893`. Väliseid internetiühendusi see ei ava.
+
+Laadi projekt GitHubist alla ja käivita selle kaustas:
 
 ```powershell
-.\Send-P93Notification.ps1 -Event ALERT    # Kollane vahelduv vilkumine 5 s
-.\Send-P93Notification.ps1 -Event ERROR    # Punane vahelduv vilkumine 5 s
-.\Send-P93Notification.ps1 -Event SUCCESS  # Roheline valgus 1,8 s
-.\Send-P93Notification.ps1 -Event STOP     # Taasta OpenRGB valitud värvid
+.\Send-P93Notification.ps1 -Event ALERT
+.\Send-P93Notification.ps1 -Event ERROR
+.\Send-P93Notification.ps1 -Event SUCCESS
+.\Send-P93Notification.ps1 -Event STOP
 ```
 
-Nii saab näiteks ntfy sõnumit töötlev kohalik skript hiire märguande käivitada. Plugin ise ei ühendu ntfy serveriga ega tuvasta automaatselt ChatGPT vastuse valmimist.
+| Käsk | Mõju |
+|---|---|
+| `ALERT` / `NOTICE` | Kollane kahe grupi vilkumine 5 sekundit |
+| `ERROR` | Punane kahe grupi vilkumine 5 sekundit |
+| `SUCCESS` | Kõik kaheksa LED-i roheliseks 1,8 sekundiks |
+| `STOP` | Peatab efekti ja taastab OpenRGB valitud värvid |
 
-Vaata ka [täielikku HID-käskude kirjeldust](HID_PROTOCOL.md).
+Näiteks saab sinu kohalik ntfy-sõnumit töötlev skript käivitada `-Event ALERT`. Plugin ise **ei ühendu ntfy ega ChatGPT-ga**: selleks tuleb sündmuse tuvastus ja käsu väljakutse eraldi seadistada.
 
-## 5. Nupud, valgusrežiimid ja profiilid
+## 6. Tõrkeotsing
 
-- **Direct** võimaldab nüüd määrata 15 HID-kohta eri värvi. Füüsiliste LED-ide ja värvikohtade täpne vastavus vajab testimist.
-- **Speed** ja **Brightness** on OpenRGB Direct-režiimis hallid. Vilguri kiirus on eraldi seadistatav **Beacon interval** väljal.
-- OpenRGB **Save Profile** salvestab OpenRGB tarkvaralise profiili; teade **Saving Not Supported** tähendab, et plugin ei salvesta valgustust hiire püsiprofiili.
-- Pluginat **välja lülitades** peatuvad uued värvikäsud, kuid viimati seatud värv võib jääda hiirele. Endise valgusrežiimi taastamiseks kasuta oma salvestatud **Bloody WorkShop 8** profiili.
-- Ära muuda samaaegselt Bloody WorkShop 8-s ja OpenRGB-s hiire valgustust: käsud võivad üksteist üle kirjutada. Bloody ekraanipildi- ja nupumakrosid pole vaja ümber seadistada.
+| Probleem | Lahendus |
+|---|---|
+| Plugin ei ilmu OpenRGB-s | Veendu DLL-i asukohas ja taaskäivita OpenRGB täielikult |
+| Hiir puudub Devices nimekirjas | Kasuta õiget P93 mudelit; vajuta **Retry device detection** |
+| Värvid ei muutu | Luba **Enable RGB control**, vali LED ja rakenda värv |
+| Värv muutub ise tagasi | Teine RGB-tarkvara võib samaaegselt valgustust juhtida |
+| PawnIO hoiatus | P93 puhul pole PawnIO vajalik |
+| Smart App Control blokeerib | Kontrolli väljalaset ja allkirjastamist; pole üksiku DLL-i erandit |
+| Teavitused ei tööta | Kontrolli linnukest ja et port 45893 oleks vaba |
+| LED 9–15 puuduvad | See on õige: need ei vasta füüsilistele P93 LED-idele |
+| Hiir ei reageeri | Sule OpenRGB, ühenda hiir uuesti ja taasta vajadusel varasem pluginaversioon |
 
-## 6. Ohutu kiire test
+Logid asuvad `%APPDATA%\OpenRGB\logs\`. Ära avalda tooreid USB-liikluse salvestusi, sest need võivad sisaldada teiste seadmete andmeid.
 
-- [ ] `Settings → Bloody P93` näitab ühendatud hiirt.
-- [ ] Pärast `Enable RGB control` märkimist muutub näiteks lilla `A000FF` punaseks `FF0000` ja tagasi.
-- [ ] Hiire põhiklahvid, rullik ja olemasolev ekraanipildi makro töötavad.
-- [ ] Plugina keelamisel ei muudeta enam uut värvi.
-- [ ] Pärast OpenRGB taaskäivitamist saab plugina uuesti lubada.
-- [ ] Soovi korral kontrolli uuesti pärast Windowsi taaskäivitust.
+## 7. Eemaldamine ja varasema valguse taastamine
 
-**Päristest 10.11.2026:** kasutaja kinnitas, et hiir ilmub OpenRGB-s, **värv muutub ja hiirenupud töötavad**. Uue v0.2 LED-ide erijuhtimise ja vilkuri päristest on veel tegemata.
+Sulge OpenRGB, kustuta `%APPDATA%\OpenRGB\plugins\OpenRGBBloodyP93Plugin.dll` ja käivita OpenRGB uuesti. Soovi korral taasta salvestatud valgusseadistus Bloody WorkShop 8 programmis. Plugin ei muuda hiire nuppude makrosid.
 
-## 7. Tõrkeotsing
+## 8. Tehniline ja arendusinfo
 
-| Probleem | Kontroll |
-| --- | --- |
-| Pluginat pole Settingsi all | Veendu, et DLL on `%APPDATA%\OpenRGB\plugins\` kaustas ja OpenRGB 1.1 on pärast kopeerimist täielikult taaskäivitatud |
-| `Bloody P93 (community)` ei ilmu | Kontrolli, kas kasutad päriselt Bloody P93 mudelit (USB `09DA:31DE`); pluginaseadetes kasuta **Retry device detection** |
-| Näed hiirt, kuid värv ei muutu | Märgi **Enable RGB control**, vali värviline LED-ruut ja vajuta **Apply Colors To Selection** |
-| Värv muutub tagasi | Teine RGB-programm (nt Bloody WorkShop 8) võib samal ajal valgustust kirjutada; kontrolli, et ainult üks juhiks valgustust |
-| PawnIO / I2C hoiatus | Bloody P93 HID-juhtimine ei vaja PawnIO-d; hoiatust võib selle kasutusjuhtumi puhul ignoreerida |
-| DLL blokeeritakse Windowsis | Kontrolli faili päritolu ja väljalaske kontrollsummat. Ära lülita üksnes plugina pärast Smart App Controli üldiselt välja |
-| Hiire valgus jäi soovimatuks | Lülita plugin välja ja taasta valgustus Bloody WorkShop 8-s salvestatud profiilist |
-| Hiir ei reageeri | Sulge OpenRGB, ühenda hiir uuesti ning proovi; kui viga püsib, eemalda plugin ja ava probleemiraport |
+Tootjapõhine HID `VID_09DA/PID_31DE`, `MI_02/COL04`, `UsagePage=FF32`, `Usage=0218`. `HidD_SetFeature` saadab Report ID `07` ja 64-baidise RGB-käsu `07 03 06 02`; füüsiliste LED-ide värvibaitide ofsetid on **8–31**. Täpsemalt: [HID käsud](HID_PROTOCOL.md) ja [testid](VALIDATION.md).
 
-Diagnostikalogid: `%APPDATA%\OpenRGB\logs\`. Nendes ei pruugi olla kirjutatavate RGB-pakettide sisu. Ära lisa veateatele terviklikku USB-liikluse logi ega paroole sisaldavaid andmeid.
-
-## 8. Eemaldamine
-
-1. Sulge OpenRGB täielikult.
-2. Kustuta ainult `%APPDATA%\OpenRGB\plugins\OpenRGBBloodyP93Plugin.dll` (või eemalda plugin OpenRGB seadete kaudu).
-3. Käivita OpenRGB uuesti.
-4. Taasta soovi korral varasem valgus Bloody WorkShop 8 salvestatud profiilist. **Hiire nupumakrode taastamist tavaliselt vaja ei ole**, sest plugin neid ei kirjuta.
-
-## 9. Arendajale
-
-Lähtekood, lähtefailid, CI-ehitused ja väljalasked on [GitHubis](https://github.com/liikane/openrgb-bloody-p93). Kasutusel on OpenRGB 1.1 Plugin API 5, Qt 6.8.3 ja Windowsi HID Feature-reporti pikkusega 64 baiti.
-
-Probleemid ja täiendusettepanekud: [GitHub Issues](https://github.com/liikane/openrgb-bloody-p93/issues). Uut HID seadmetuge ei tohiks katsetada tundmatute käskudega ega firmware uuendustega. Litsents: GPL-2.0-or-later.
-
-## Seadistuste taastamine pärast OpenRGB taaskäivitamist (v0.2.1)
-
-Plugin jätab meelde **Enable RGB control** valiku, kõik 15 HID-värvi, vilkuri grupid, kiiruse ja kohalike teavituste lubamise. Need taastatakse järgmisel OpenRGB käivitamisel, kui hiir on ühendatud. RGB-juhtimise linnukese eemaldamine jätab sätte välja ka järgmiseks käivituseks.
-
-**Vilkur ei käivitu automaatselt** pärast OpenRGB taaskäivitamist, et vältida ootamatut vilkumist. Vajaduse korral märgi uuesti **Flashing beacon**. Teavituste kuulamine toimub ainult kasutaja lubamisel.
-
-Seaded hoitakse kasutaja profiili kohalikus INI-failis. Plugin kasutab Windowsi Winsocki ja ei vaja eraldi Qt Network DLL-i.
+Lähtekood: [liikane/openrgb-bloody-p93](https://github.com/liikane/openrgb-bloody-p93), litsents GPL-2.0-or-later. Projekt pole Bloody ega OpenRGB ametlik toode.

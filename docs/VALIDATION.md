@@ -48,3 +48,22 @@ The plugin was sent a localhost-only notification. Read-only HID `GetFeature` sa
 - Observe the beacon and notify colors with the mouse in hand; the test confirms USB report state, **not camera-visible LED positions**.
 
 Test data remained on the authorized Windows machine under `C:\Users\lauri\Portable\Scripts\RGB-Uuring\`. The public repo does not contain raw USB captures or user input events.
+
+## Physical LED mapping update — 10 November 2026
+
+The P93 owner has identified **eight** physical LEDs, not fifteen. The HID RGB report still contains fifteen triplet fields, but **only fields 1–8 correspond to physical LEDs**. Logo lighting uses 7 and 8 together; the wheel (LED 1) is the most conspicuous.
+
+| Physical LED | HID slot | Location | RGB byte offsets |
+|---:|---:|---|---|
+| 1 | 1 | Wheel / middle button | 8–10 |
+| 2 | 2 | Left front | 11–13 |
+| 3 | 3 | Right front | 14–16 |
+| 4 | 4 | Under three extra side buttons | 17–19 |
+| 5 | 5 | Right middle | 20–22 |
+| 6 | 6 | Left middle | 23–25 |
+| 7 | 7 | Left rear and shared logo | 26–28 |
+| 8 | 8 | Right rear / middle and shared logo | 29–31 |
+
+The v0.2.1 beacon test above describes the **old 7-slot / 8-slot HID-field split** and remains useful as historical evidence that the mouse receives two distinct command frames. The **new visible LED grouping** proposed by the owner is **A = 1+4**, **B = 2+3+5+6+7+8**. The new v0.3.0 build and HID report verification are separate tests; do not interpret the original split as evidence that fifteen physical LEDs exist.
+
+Original schematic and exact byte map: [LED_MAP.md](LED_MAP.md).

@@ -35,9 +35,9 @@ void SaveSetting(const char* key, const QVariant& value)
 OpenRGBPluginInfo BloodyP93Plugin::GetPluginInfo()
 {
     OpenRGBPluginInfo info{};
-    info.Name = "Bloody P93 RGB Bridge";
-    info.Description = "Bloody P93 RGB lighting, per-slot colors and flashing beacon (09DA:31DE)";
-    info.Version = "0.2.1";
+    info.Name = "True Mouse Art";
+    info.Description = "Bloody P93 mouse OpenRGB Plugin / I Turned My Mouse into a Flashing Beacon!";
+    info.Version = "0.3.0";
     info.Commit = "community";
     info.URL = "https://github.com/liikane/openrgb-bloody-p93";
     info.Location = OPENRGB_PLUGIN_LOCATION_SETTINGS;
@@ -57,11 +57,13 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
     enabled_.store(false);
     widget_ = new QWidget();
     auto* layout = new QVBoxLayout(widget_);
-    auto* title = new QLabel("Bloody P93 RGB Bridge — I Turned My Mouse into a Flashing Beacon", widget_);
+    auto* title = new QLabel("True Mouse Art / Bloody P93 mouse OpenRGB Plugin", widget_);
     QFont font = title->font();
     font.setBold(true);
     title->setFont(font);
     layout->addWidget(title);
+    auto* tagline = new QLabel("I Turned My Mouse into a Flashing Beacon!", widget_);
+    layout->addWidget(tagline);
 
     status_ = new QLabel("Checking Bloody P93 HID device...", widget_);
     status_->setWordWrap(true);
@@ -74,21 +76,21 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
     auto* retry = new QPushButton("Retry device detection", widget_);
     layout->addWidget(retry);
 
-    auto* separator = new QLabel("Identify the 15 HID color slots to map physical mouse lights.", widget_);
+    auto* separator = new QLabel("Eight physical P93 LEDs, mapped to the first eight HID RGB slots.", widget_);
     separator->setWordWrap(true);
     layout->addWidget(separator);
 
     auto* identify = new QPushButton("Identify next LED slot (yellow)", widget_);
     layout->addWidget(identify);
-    slot_status_ = new QLabel("Slot mapping not yet verified; use Identify to test 1–15.", widget_);
+    slot_status_ = new QLabel("Physical LEDs: 1 wheel, 2 left front, 3 right front, 4 extra buttons, 5 right mid, 6 left mid, 7 left rear, 8 right rear. Logo: 7+8.", widget_);
     layout->addWidget(slot_status_);
 
     auto* restore = new QPushButton("Restore selected OpenRGB colors", widget_);
     layout->addWidget(restore);
 
     auto* form = new QFormLayout();
-    left_slots_ = new QLineEdit("1,2,3,4,5,6,7", widget_);
-    right_slots_ = new QLineEdit("8,9,10,11,12,13,14,15", widget_);
+    left_slots_ = new QLineEdit("1,4", widget_);
+    right_slots_ = new QLineEdit("2,3,5,6,7,8", widget_);
     interval_ = new QSpinBox(widget_);
     interval_->setRange(120, 2000);
     interval_->setSingleStep(50);
@@ -109,7 +111,7 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
 
     auto* instructions = new QLabel(
         "Windows only. 64-byte HID RGB reports, no button macros or firmware changes. "
-        "The 15 protocol slots are initially numbered, not verified left/right physical positions. "
+        "The HID report contains 15 slots, but only slots 1-8 connect to P93 lighting. "
         "Notification commands are listened for only when enabled. "
         "Unchecking RGB control stops effects but may leave the last color on the mouse.", widget_);
     instructions->setWordWrap(true);
@@ -185,9 +187,9 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
         slot_colors[static_cast<std::size_t>(next_slot_)] = {255,210,0};
         if(device_.SetSlots(slot_colors))
         {
-            slot_status_->setText(QString("Active protocol slot: %1/15. Record which physical LED lights up.")
+            slot_status_->setText(QString("Active physical LED: %1/8. Check the mouse lighting.")
                 .arg(next_slot_ + 1));
-            next_slot_ = (next_slot_ + 1) % 15;
+            next_slot_ = (next_slot_ + 1) % 8;
         }
         else
         {
@@ -242,8 +244,18 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
 
     // Restore preferences only after signals and the controller are registered.
     // On first installation, RGB control remains off until the user opts in.
-    left_slots_->setText(LoadSetting("groupA", QStringLiteral("1,2,3,4,5,6,7")).toString());
-    right_slots_->setText(LoadSetting("groupB", QStringLiteral("8,9,10,11,12,13,14,15")).toString());
+    left_slots_->setText(LoadSetting("groupA", QStringLiteral("1,4")).toString());
+    right_slots_->setText(LoadSetting("groupB", QStringLiteral("2,3,5,6,7,8")).toString());
+    {
+        std::vector<std::size_t> a, b;
+        if(!ParseGroups(a,b))
+        {
+            left_slots_->setText("1,4");
+            right_slots_->setText("2,3,5,6,7,8");
+            SaveSetting("groupA", left_slots_->text());
+            SaveSetting("groupB", right_slots_->text());
+        }
+    }
     interval_->setValue(LoadSetting("intervalMs", 320).toInt());
     connect(left_slots_, &QLineEdit::editingFinished, this, [this]{
         SaveSetting("groupA", left_slots_->text().trimmed());
@@ -272,7 +284,7 @@ bool BloodyP93Plugin::ParseGroups(std::vector<std::size_t>& left,
         {
             bool ok = false;
             const int value = entry.trimmed().toInt(&ok);
-            if(!ok || value < 1 || value > 15 || used.contains(value))
+            if(!ok || value < 1 || value > 8 || used.contains(value))
                 return false;
             used.insert(value);
             out.push_back(static_cast<std::size_t>(value-1));
@@ -294,7 +306,7 @@ void BloodyP93Plugin::TickBeacon()
     if(!ParseGroups(a,b))
     {
         beacon_->setChecked(false);
-        status_->setText("Invalid beacon groups: use non-overlapping slot numbers 1–15.");
+        status_->setText("Invalid beacon groups: use non-overlapping physical LED numbers 1-8.");
         return;
     }
 
@@ -386,7 +398,8 @@ void BloodyP93Plugin::HandleNotification()
             notification_timeout_->stop();
             beacon_->setChecked(false);
             P93Protocol::Slots slot_colors{};
-            slot_colors.fill({0, 255, 0});
+            for(std::size_t i=0; i<P93Protocol::PhysicalLedCount; ++i)
+                slot_colors[i] = {0, 255, 0};
             if(device_.SetSlots(slot_colors))
                 notification_timeout_->start(1800);
         }
@@ -421,11 +434,11 @@ void BloodyP93Plugin::RegisterDevice()
     }
 
     RGBController_Setup setup{};
-    setup.description = "Community HID RGB controller with individual color slots and beacon.";
+    setup.description = "True Mouse Art: eight physical LED zones and a programmable mouse beacon.";
     setup.location = "HID 09DA:31DE MI_02 COL04";
     setup.name = "Bloody P93 (community)";
     setup.vendor = "Bloody";
-    setup.version = "0.2.1";
+    setup.version = "0.3.0";
     setup.active_mode = 0;
     setup.type = DEVICE_TYPE_MOUSE;
     setup.flags = CONTROLLER_FLAG_VIRTUAL;
@@ -438,18 +451,24 @@ void BloodyP93Plugin::RegisterDevice()
     setup.modes.push_back(direct);
 
     zone all{};
-    all.name = "P93 protocol color slots";
+    all.name = "P93 physical LEDs (1-8)";
     all.type = ZONE_TYPE_LINEAR;
     all.start_idx = 0;
-    all.leds_count = P93Protocol::SlotCount;
-    all.leds_min = P93Protocol::SlotCount;
-    all.leds_max = P93Protocol::SlotCount;
+    all.leds_count = P93Protocol::PhysicalLedCount;
+    all.leds_min = P93Protocol::PhysicalLedCount;
+    all.leds_max = P93Protocol::PhysicalLedCount;
     setup.zones.push_back(all);
 
-    for(std::size_t i=0;i<P93Protocol::SlotCount;++i)
+    for(std::size_t i=0;i<P93Protocol::PhysicalLedCount;++i)
     {
         led slot{};
-        slot.name = "HID slot " + std::to_string(i+1);
+        static const char* names[P93Protocol::PhysicalLedCount] = {
+            "1 - Wheel", "2 - Left front", "3 - Right front",
+            "4 - Extra buttons center", "5 - Right middle",
+            "6 - Left middle", "7 - Left rear + logo",
+            "8 - Right rear + logo"
+        };
+        slot.name = names[i];
         slot.value = static_cast<unsigned int>(i);
         setup.leds.push_back(slot);
     }
@@ -468,7 +487,7 @@ void BloodyP93Plugin::RegisterDevice()
     }
 
     const QStringList remembered = LoadSetting("lastColors", QStringList{}).toStringList();
-    for(std::size_t i=0;i<P93Protocol::SlotCount;++i)
+    for(std::size_t i=0;i<P93Protocol::PhysicalLedCount;++i)
     {
         unsigned red=160, green=0, blue=255;
         if(i < static_cast<std::size_t>(remembered.size()))
@@ -498,7 +517,7 @@ void BloodyP93Plugin::ApplyColor()
 
     P93Protocol::Slots slot_colors{};
     QStringList colorPreferences;
-    for(std::size_t i=0;i<P93Protocol::SlotCount;++i)
+    for(std::size_t i=0;i<P93Protocol::PhysicalLedCount;++i)
     {
         const RGBColor color = controller_->GetColor(static_cast<unsigned int>(i));
         const unsigned red = static_cast<unsigned>(RGBGetRValue(color));

@@ -1,59 +1,66 @@
-# I Turned My Mouse into a Flashing Beacon
-### *Tegin hiirest vilkuri*
+# True Mouse Art
 
-**Project:** [Bloody P93 RGB Bridge](https://github.com/liikane/openrgb-bloody-p93)  
-**Platform:** Windows / OpenRGB 1.1  
-**License:** GPL-2.0-or-later  
-**Author:** [liikane](https://github.com/liikane)
+**Bloody P93 mouse OpenRGB Plugin**
 
-## The idea
+*I Turned My Mouse into a Flashing Beacon!*
 
-Why keep a gaming mouse quietly glowing when it can become a visible signal for automations?
+### A mouse that refuses to stay quiet
 
-A flashing mouse is deliberately playful. The useful part is a non-intrusive notification: scripts and applications can signal that a task is complete or needs attention without taking keyboard focus or displaying another modal window.
+Some people build a dashboard to track a computer's tasks. Some have notification sounds, pop-ups, or a carefully arranged taskbar. We happened to have a Bloody P93 gaming mouse with eight RGB LEDs — and an extremely important question: *could the mouse itself tell us when something happens?*
 
-## The engineering challenge
+This began as a bit of fun. We were debugging a keyboard RGB interface, noticed the mouse was programmable over Windows HID, and wondered whether it could flash like a tiny beacon. Within a few tests, the mouse turned purple on command. Then red. Then green. The practical joke turned into a real OpenRGB plugin.
 
-The Bloody P93 mouse is not listed as a supported device in OpenRGB 1.1. We discovered its USB/HID interface and investigated the RGB command family. The first experiments changed the mouse to solid purple and triggered red/green flashes while its button macros remained usable.
+It's not going to direct traffic, but it's surprisingly good at asking for attention.
 
-Rather than patching OpenRGB itself, we built a standalone Plugin API v5 extension, called **Bloody P93 RGB Bridge**.
+## The challenge: unknown mouse meets open software
+
+OpenRGB 1.1 already supports several Bloody models, but not the P93. Its USB ID is `09DA:31DE`; on Windows its vendor HID interface is `MI_02/COL04`. We verified that the relevant report is a **64-byte HID Feature report** with Report ID **7**, and that `07 03 06 02` is the color-control command.
+
+The report has fifteen RGB triplet fields. That initially looked like fifteen LEDs. The real mouse, however, has **only eight physical LEDs**. With the device owner's observations, we mapped the visible LEDs to slots **1–8**, hid the remaining fields in the interface, and documented each channel's actual byte offsets.
+
+![Original mouse-top-view diagram: eight RGB LED positions and two beacon groups](mouse-led-map.svg)
+
+This is now an openly documented [LED-to-HID byte map](LED_MAP.md), not an opaque box of guessed numbers.
+
+## The tiny beacon
+
+A single blinking color wasn't enough. Our first useful pattern now alternates **LED 1 + 4** (the prominent wheel and area under the extra buttons) against **LED 2 + 3 + 5 + 6 + 7 + 8** (the rest, including the logo). These groups flash in yellow or red, with a configurable interval.
+
+The logo, incidentally, lights up through LEDs **7 and 8 together**. Nobody promised that the logo was the most straightforward part of the project.
+
+## The technical architecture
 
 ```mermaid
 flowchart LR
-  A["OpenRGB picker"] --> P["Bloody P93 Plugin"]
-  N["Local notification / ntfy bridge"] --> U["Loopback UDP"]
-  U --> P
-  P --> C["Windows HID Feature ID 7"]
-  C --> M["Mouse RGB lights"]
+  A["OpenRGB color picker"] --> P["True Mouse Art plugin"]
+  B["Local script / ntfy bridge"] --> C["127.0.0.1:45893 notification"]
+  C --> P
+  P --> H["Windows HID Feature report ID 7"]
+  H --> M["Bloody P93: 8 physical RGB LEDs"]
 ```
 
-## Milestones
+- **Qt 6 / C++17 / OpenRGB Plugin API v5**: adds a virtual P93 RGB controller without modifying OpenRGB itself.
+- **Windows HID**: eight separately configurable LED colors, sent using only known RGB commands.
+- **Windows Winsock**: optional loopback-only notifications for `ALERT`, `ERROR`, `SUCCESS`, and `STOP`.
+- **Saved user preferences**: RGB enablement, colors, groups and interval survive OpenRGB restarts.
+- **GitHub Actions**: builds and runs C++ HID packet tests without requiring a complete C++ environment on the user’s computer.
 
-| Step | Evidence |
-| --- | --- |
-| HID hardware detection | Vendor 09DA, product 31DE; MI_02/COL04 |
-| First RGB commands | Physical mouse changed color and flashed |
-| OpenRGB integration | Custom virtual controller appears in Devices |
-| User acceptance | 10 Nov 2026: OpenRGB changes mouse color; mouse buttons still work |
-| Multi-slot and beacon edition | Source implemented; physical mapping and notification acceptance testing pending |
+No firmware modification, button remapping, custom USB driver, keylogging, or background internet traffic is involved.
 
-## The fun part
+## Real hardware, real tests
 
-The next step is a **yellow left/right flasher** like a miniature vehicle beacon, with adjustable interval and custom slot groups. A local automation can send `ALERT`, `ERROR`, or `SUCCESS` to the plugin, causing yellow/red flashes or a green completion signal.
+On a physical P93, previous versions successfully changed RGB colors through OpenRGB and left the mouse buttons usable. We verified the output of the alternating beacon and green completion signal by sampling the HID feature reports. In a separate owner test, the eight physical LED positions and their shared logo behavior were identified.
 
-No need to interrupt the current document or capture keyboard focus. The product is deliberately amusing, but the underlying Windows HID integration, OpenRGB plugin, and test pipeline are real.
+The new default **1+4 versus the remaining six** pattern and updated eight-control interface are tracked as a separately verified release; see [validation notes](VALIDATION.md) for the build and hardware evidence.
 
-## Responsible engineering
+## Documentation worth sharing
 
-The plugin only targets an exact HID identity and known RGB reports. It does not rewrite the mouse firmware or button macros. Controls are opt-in, and the local UDP listener is disabled by default.
+This project is deliberately easy to inspect and reproduce. We're publishing the [English manual](USER_MANUAL.md), [Estonian manual](KASUTUSJUHEND.md), [LED location map](LED_MAP.md), [exact command protocol](HID_PROTOCOL.md), test results, and the sources under GPL-2.0-or-later.
 
-## Documentation and source
+**Project:** [liikane/openrgb-bloody-p93](https://github.com/liikane/openrgb-bloody-p93)
 
-- [Project and source code](../README.md)
-- [English user manual](USER_MANUAL.md)
-- [Eestikeelne kasutusjuhend](KASUTUSJUHEND.md)
-- [Detailed HID protocol and command bytes](HID_PROTOCOL.md)
-- [Releases](https://github.com/liikane/openrgb-bloody-p93/releases)
-- [Hardware acceptance and remaining tasks](https://github.com/liikane/openrgb-bloody-p93/issues)
+**Releases:** [GitHub](https://github.com/liikane/openrgb-bloody-p93/releases)
 
-**Next device:** Genesis Rhod 600 RGB keyboard — researched separately, with no unverified output commands sent.
+**Maintainer:** [liikane](https://github.com/liikane)
+
+*And then there is the Genesis Rhod 600 keyboard. Eight lights are fun. A keyboard with a few more possibilities might be even more interesting.*

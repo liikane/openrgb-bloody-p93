@@ -1,117 +1,110 @@
-# Bloody P93 RGB Bridge — User Manual
+# True Mouse Art — User manual
 
-**Requirements:** Windows 10/11, OpenRGB **1.1**, Bloody **P93**.  
-**Project:** [liikane/openrgb-bloody-p93](https://github.com/liikane/openrgb-bloody-p93)  
-**Downloads:** [GitHub Releases](https://github.com/liikane/openrgb-bloody-p93/releases)  
-**Status:** Independent community plugin tested on physical Windows hardware. Not an official product of Bloody or OpenRGB.
+**Bloody P93 mouse OpenRGB Plugin**
 
-## 1. What it does
+*I Turned My Mouse into a Flashing Beacon!*
 
-This plugin adds **Bloody P93 (community)** to the OpenRGB Devices list, allowing you to control **15 HID RGB color slots** from OpenRGB. It uses built-in Windows HID APIs and requires no custom USB driver. It **does not modify mouse button assignments, macros, DPI settings, or firmware**.
+A perfectly respectable RGB gaming mouse had eight lights, but wasn't allowed to tell its computer user very much. We gave it a more interesting job: signal task completion, errors, and attention-worthy events without popups. The mouse still works as a mouse. It's a hobby project with real HID commands, not an official Bloody/OpenRGB extension.
 
-Supported USB identity: `09DA:31DE`; HID interface `MI_02/COL04`. The plugin is not intended for other Bloody models.
+## 1. Requirements and installation
 
-## 2. Installation
+**Windows 10/11, OpenRGB 1.1**, Bloody P93 gaming mouse (USB `09DA:31DE`).
 
-1. Download `OpenRGBBloodyP93Plugin.dll` from the project's [GitHub Releases](https://github.com/liikane/openrgb-bloody-p93/releases). Match the build to OpenRGB 1.1 on Windows x64.
-2. Exit OpenRGB completely, including its system tray instance.
-3. Copy the DLL into this directory:
+1. Download the latest matching `OpenRGBBloodyP93Plugin.dll` from [Releases](https://github.com/liikane/openrgb-bloody-p93/releases). Check the release notes and SHA-256 for experimental builds.
+2. Exit OpenRGB fully, including any tray instance, and make a backup copy of an existing plugin DLL.
+3. Copy the new DLL into `%APPDATA%\OpenRGB\plugins\` (create the folder if required).
+4. Restart OpenRGB. Open **Settings → Bloody P93**, then check **Enable RGB control**.
+5. Under **Devices → Bloody P93 (community)**, you should see **eight physical LED controls**.
 
-   `%APPDATA%\OpenRGB\plugins\`
+The plugin requires neither a custom HID driver nor PawnIO. Windows Smart App Control may block unsigned builds; verify the source of a release and be aware of security implications before changing system security settings.
 
-   Create the `plugins` folder if it does not exist. Alternatively, install the DLL via OpenRGB's **Settings → Plugins** interface.
-4. Restart OpenRGB. You should now see a **Bloody P93** settings page and **Bloody P93 (community)** under Devices if a matching mouse is connected.
+## 2. Where the eight lights are
 
-Do not register the DLL in Windows system directories. Administrator permissions are not needed.
+![Top view diagram of the P93 mouse and its eight mapped LEDs](mouse-led-map.svg)
 
-## 3. Changing colors
+**Wheel LED 1** is especially visible. The mouse logo is illuminated by **LEDs 7 and 8 together**. The sketch is an original simplified top-view map, not an official manufacturing diagram.
 
-1. Open **Settings → Bloody P93**.
-2. Verify that the device is connected. If not, click **Retry device detection**.
-3. Check **Enable RGB control (experimental)**. Before you enable it, the plugin sends no RGB commands.
-4. Go to **Devices** and select **Bloody P93 (community)** on the left.
-5. Select the colored square labeled **All RGB lights** in the middle.
-6. Pick a color using the wheel, presets, or the **Hex** input on the right.
-7. Click **Apply Colors To Selection** if needed. The color may update immediately when the LED selection is active.
+| LED | HID slot | Physical position | RGB byte offsets (R,G,B) |
+|---:|---:|---|---|
+| 1 | 1 | Wheel / middle button | 8, 9, 10 |
+| 2 | 2 | Left front | 11, 12, 13 |
+| 3 | 3 | Right front | 14, 15, 16 |
+| 4 | 4 | Middle, below three extra side buttons | 17, 18, 19 |
+| 5 | 5 | Right middle | 20, 21, 22 |
+| 6 | 6 | Left middle | 23, 24, 25 |
+| 7 | 7 | Left rear; also the logo | 26, 27, 28 |
+| 8 | 8 | Right rear / center; also the logo | 29, 30, 31 |
 
-Example: purple is `#A000FF`, or R 160, G 0, B 255.
+**Important:** there are **8 physical LEDs**, not 15. The vendor's 64-byte HID report has 15 RGB triplet *fields*, but **slots 9–15 have no corresponding P93 LEDs** and are hidden in the OpenRGB interface. Their bytes remain present and are transmitted as zero. See the complete [LED map](LED_MAP.md).
 
-Avoid **Apply All Devices** unless you deliberately want to change every connected OpenRGB device.
+## 3. Change colors
 
-## 4. Independent LED slots, beacon, and notifications
+Open **Devices**, choose the P93 mouse, click any of its eight LEDs, then select a color via the color wheel or Hex field. Click **Apply Colors To Selection** if required. Color examples:
 
-The v0.2 plugin displays **HID slot 1** through **HID slot 15** in the **Devices** tab. Select a slot and set a color. Protocol slots are independently addressable in the outgoing USB report, but their mapping to physical mouse LED locations must be verified.
+- Purple: `#A000FF`
+- Yellow: `#FFD200`
+- Red: `#FF0000`
+- Green: `#00FF00`
 
-In **Settings → Bloody P93**:
+RGB enablement and the eight color selections persist after OpenRGB restarts. **Saving Not Supported** on the device page refers to storing settings in hardware firmware, not to the plugin's application-level settings.
 
-1. Check **Enable RGB control**.
-2. Click **Identify next LED slot (yellow)** repeatedly. Each click illuminates the next protocol slot, 1 through 15. Record which physical light responds (some slots may map to the same light or have no visible LED).
-3. Enter comma-separated **Beacon group A** and **Beacon group B** slot numbers. The default split is `1,2,3,4,5,6,7` versus `8,9,10,11,12,13,14,15`. Adjust it to match your observed **physical left and right** groups.
-4. Set **Beacon interval** (120–2000 ms). Check **Flashing beacon** to alternate yellow light between the two groups. Uncheck it to stop, then use **Restore selected OpenRGB colors**.
-5. For external events, check **Enable local notification commands**. This enables a listener at `127.0.0.1:45893`, **only while you opt in**.
+## 4. The flashing beacon
 
-From the project's root directory, run:
+The default effect has **two complementary groups**. It is more interesting than switching all the lights on and off simultaneously:
+
+| Phase | Yellow LEDs | Off LEDs |
+|---|---|---|
+| **A** | **1 + 4**, the wheel and extra-button area | 2, 3, 5, 6, 7, 8 |
+| **B** | **2 + 3 + 5 + 6 + 7 + 8**, perimeter and logo | 1, 4 |
+
+Go to **Settings → Bloody P93**. Adjust group A/B slot numbers or **Beacon interval** (120–2000 ms), then check **Flashing beacon**. To stop, uncheck it or click **Restore selected OpenRGB colors**.
+
+These groups alternate center versus perimeter, **not literal left versus right**. Beacon flashing does *not* resume automatically after restarting OpenRGB.
+
+## 5. Notifications
+
+Enable **Local notification commands** under Settings to allow a local app to signal the mouse via `127.0.0.1:45893`. This listener is disabled unless you opt in and cannot be accessed by other machines.
+
+The repository includes a PowerShell helper:
 
 ```powershell
-.\Send-P93Notification.ps1 -Event ALERT    # Yellow alternating, 5 seconds
-.\Send-P93Notification.ps1 -Event ERROR    # Red alternating, 5 seconds
-.\Send-P93Notification.ps1 -Event SUCCESS  # Green for 1.8 seconds
-.\Send-P93Notification.ps1 -Event STOP     # Restore selected color slots
+.\Send-P93Notification.ps1 -Event ALERT
+.\Send-P93Notification.ps1 -Event ERROR
+.\Send-P93Notification.ps1 -Event SUCCESS
+.\Send-P93Notification.ps1 -Event STOP
 ```
 
-These scripts require local OpenRGB and the plugin; they do not access the internet. To integrate **ntfy**, a local agent or notification script must call the PowerShell sender when an ntfy message arrives. ChatGPT does not directly emit a Windows event when a response completes. [Full protocol and command specification](HID_PROTOCOL.md).
+| Command | Outcome |
+|---|---|
+| `ALERT` / `NOTICE` | Alternating yellow beacon for 5 seconds |
+| `ERROR` | Alternating red beacon for 5 seconds |
+| `SUCCESS` | Eight LEDs glow green for 1.8 seconds |
+| `STOP` | Stop effects and restore your selected RGB colors |
 
-## 5. Modes, profiles, and limitations
+A local script, task monitor, or ntfy client can invoke this helper when an event occurs. The plugin **does not directly connect to ChatGPT or subscribe to an ntfy server**.
 
-- **Direct** mode remains the primary OpenRGB hardware mode. It now exposes 15 HID color slots separately. Their precise mapping to physical LED locations is not yet validated.
-- **Speed** and **Brightness** controls on OpenRGB's native Direct device mode are unavailable; the plugin provides a separate **Beacon interval** control for the alternating software effect.
-- **Saving Not Supported** means no hardware profile saving is implemented. OpenRGB's **Save Profile** concerns OpenRGB software profiles.
-- Unchecking **Enable RGB control** prevents further writes but **does not automatically restore the previous color**. If necessary, restore lighting with a saved Bloody WorkShop 8 profile.
-- Avoid competing lighting changes from Bloody WorkShop 8 while using OpenRGB. Saved button macros remain untouched by this plugin, though persistent configuration should still be checked after restarts.
+## 6. Troubleshooting
 
-## 6. Quick acceptance test
+| Symptom | Resolution |
+|---|---|
+| No plugin settings | Check DLL folder and restart OpenRGB fully |
+| No P93 device | Verify the P93 model and choose **Retry device detection** |
+| Colors don't change | Enable RGB control, select the physical LED and apply color |
+| Colors revert | A second RGB program might be controlling the same mouse |
+| PawnIO warning | PawnIO is not needed for this particular USB HID interface |
+| Windows blocks DLL | Check the downloaded build and code-signing status; Smart App Control has no per-file exemption |
+| Notifications don't work | Enable notifications and check whether loopback port 45893 is free |
+| Slots 9–15 are absent | Correct: those fields have no P93 physical LEDs |
+| Mouse stops responding | Close OpenRGB, reconnect the device, and restore the previous plugin if necessary |
 
-- [ ] The plugin's Settings page reports the P93 mouse as connected.
-- [ ] Enabling RGB control allows changing from purple (`A000FF`) to red (`FF0000`) and back.
-- [ ] Mouse left/right buttons, wheel, and existing screenshot macro continue working.
-- [ ] Disabling the plugin stops sending RGB updates.
-- [ ] Enabling the plugin after restarting OpenRGB still works.
-- [ ] Optionally check after a Windows reboot.
+OpenRGB logs: `%APPDATA%\OpenRGB\logs\`. Do not share full raw USB traces, as they can include traffic from unrelated devices.
 
-**Real-world test, 10 Nov 2026:** device owner confirmed OpenRGB displays the P93, changes color through the GUI, and mouse buttons continue working. The **v0.2 per-slot and beacon features still need a dedicated physical test**, as do restart/reconnect scenarios.
+## 7. Uninstall or restore lighting
 
-## 7. Troubleshooting
+Exit OpenRGB, delete `%APPDATA%\OpenRGB\plugins\OpenRGBBloodyP93Plugin.dll`, and restart. To restore an earlier lighting pattern, load your saved Bloody WorkShop 8 profile. This plugin never writes your mouse-button mappings or firmware.
 
-| Issue | Suggested check |
-| --- | --- |
-| Plugin missing in Settings | Confirm the DLL is in `%APPDATA%\OpenRGB\plugins\`; fully exit and restart OpenRGB 1.1 |
-| P93 missing from Devices | Check the exact P93 identity `09DA:31DE` and use **Retry device detection** |
-| Color selector has no effect | Check **Enable RGB control**, select the colored LED square, then apply the color to the selection |
-| Color is overwritten | Another utility, such as Bloody WorkShop 8, may also be controlling RGB lighting |
-| PawnIO / I2C warning | PawnIO is not required for this mouse's Windows HID interface; ignore the warning for this device |
-| Windows blocks the DLL | Verify release origin and checksum. Do not disable system-wide Smart App Control merely to install a plugin |
-| Wrong color persists | Disable the plugin, then restore the saved lighting profile using Bloody WorkShop 8 |
-| Mouse stops responding | Exit OpenRGB, reconnect the mouse; remove the plugin and report the issue if necessary |
+## 8. Technical documentation and support
 
-Logs: `%APPDATA%\OpenRGB\logs\`. Avoid uploading raw USB traffic logs, which may include unrelated sensitive data.
+HID identity `VID_09DA/PID_31DE`, `MI_02/COL04`, `UsagePage=0xFF32`, `Usage=0x0218`. RGB command `07 03 06 02`, 64-byte `HidD_SetFeature` report ID `07`. Physical LED RGB byte offsets 8–31.
 
-## 8. Uninstallation
-
-1. Exit OpenRGB completely.
-2. Remove only `%APPDATA%\OpenRGB\plugins\OpenRGBBloodyP93Plugin.dll` (or remove the plugin in Settings).
-3. Restart OpenRGB.
-4. Restore the previous lighting from your saved Bloody WorkShop 8 profile if desired. The plugin does not alter button mappings.
-
-## 9. Development and support
-
-See the [repository](https://github.com/liikane/openrgb-bloody-p93) for sources, Windows CI builds and releases. The plugin uses OpenRGB 1.1 Plugin API v5, Qt 6.8.3, and 64-byte Windows HID Feature reports.
-
-Report issues through [GitHub Issues](https://github.com/liikane/openrgb-bloody-p93/issues). Do not attempt arbitrary HID or firmware writes. License: GPL-2.0-or-later.
-
-## Restart behavior (v0.2.1)
-
-The plugin persists the **Enable RGB control** checkbox, last configured colors for all 15 HID slots, beacon groups, interval, and the notification listener checkbox. It restores these settings when OpenRGB restarts and the P93 is available. If you uncheck RGB control, the **off** preference is saved.
-
-For safety, the flashing beacon does **not** start automatically after restarting OpenRGB. Choose **Flashing beacon** again to activate it. Notification commands remain optional; loopback listening is only enabled if you opted in.
-
-Preferences use Qt INI user settings; no extra driver or Qt Network DLL is needed. The first load of a fresh installation always starts with RGB control disabled.
+See [LED map and diagram](LED_MAP.md), [HID protocol](HID_PROTOCOL.md), [validation notes](VALIDATION.md), or [GitHub source and issues](https://github.com/liikane/openrgb-bloody-p93). License GPL-2.0-or-later.

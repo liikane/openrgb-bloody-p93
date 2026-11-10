@@ -1,38 +1,70 @@
 # Tegin hiirest vilkuri
 
-### Bloody P93 RGB Bridge — OpenRGB 1.1 laiendus
+**Bloody P93 hiire OpenRGB plugin**
 
-**Veidi lapsik, aga töötab: muutsime hiire tähelepanu püüdvaks valgusmärguandeks.** OpenRGB abil saab P93 värve juhtida, kasutada eri värvikohti ja teha kahe grupi vahelduva vilkuri. Kohalikud teavitused saavad käivitada punase/kollase märguande või rohelise õnnestumissignaali.
+*Arvuti annab hiire valgustusega märku, kui töö saab valmis või miski nõuab tähelepanu.*
 
-Kood ja katseversioonid: [GitHub](https://github.com/liikane/openrgb-bloody-p93) · [Allalaadimine](https://github.com/liikane/openrgb-bloody-p93/releases)
+Ja ingliskeelne nimi on **True Mouse Art**. Sest ega igal väikesel tehnilisel eksperimendil ei pea olema igav nimi.
 
-**Päris hiirega kinnitatud 10.11.2026:** OpenRGB näitab Bloody P93 seadet, muudab värvi ning nupud töötavad. Uue v0.2 mitme LED-koha, vilkuri ja teavituste toe riistvarakatse on veel pooleli.
+Mängurihiirel oli kaheksa LED-i, aga nende peamine töö oli lihtsalt särada. Mõtlesime, et miks peaks hiir kogu aeg vait olema, kui arvuti võiks tema abil märku anda? Töö sai valmis — hiir läheb roheliseks. Midagi läks viltu — punane. Arvuti vajab tähelepanu — hiir vilgub kollaselt. Ekraanile ei ilmu tüütut hüpikakent ja klaviatuurilt ei pea käsi tõstma. Väike asi, aga paras annus *tegelikku hiirekunsti*.
 
-### Kuidas kasutada?
+Projekt on vabavaraline OpenRGB 1.1 laiendus Bloody P93 hiirele. Ingliskeelne alapealkiri on **“I Turned My Mouse into a Flashing Beacon!”**.
 
-1. Paigalda OpenRGB 1.1 ja [lisa DLL](https://github.com/liikane/openrgb-bloody-p93/releases) kausta `%APPDATA%\OpenRGB\plugins\`.
-2. Taaskäivita OpenRGB ning luba **Settings → Bloody P93 → Enable RGB control**.
-3. Sakis **Devices → Bloody P93 (community)** vali üks 15 HID-värvikohast ja muuda selle värvi.
-4. Vaates **Settings → Bloody P93** kasuta nuppu **Identify next LED slot**, et näha, milline päris LED millisele järjekorranumbrile vastab.
-5. Vilkuri jaoks määra grupid A/B (vaikimisi 1–7 ja 8–15), kiirus ning märgi **Flashing beacon**.
-6. Teavituste jaoks märgi **Enable local notification commands** ning käivita näiteks:
+[**Lähtekood GitHubis**](https://github.com/liikane/openrgb-bloody-p93) · [Allalaadimine](https://github.com/liikane/openrgb-bloody-p93/releases) · [English](README.md) · [Kasutusjuhend](docs/KASUTUSJUHEND.md)
+
+## Kus hiire LED-id on?
+
+![Hiire ülaltvaade ja LED-ide numbrid](docs/mouse-led-map.svg)
+
+Hiirel on **8 füüsilist LED-i**. OpenRGB näitab ainult kaheksat; HID-protokolli ülejäänud värvikohad **9–15** ei vasta hiire füüsilistele tuledele.
+
+Kõige nähtavam on **LED 1 ehk rullik**. Hiire logo valgustavad **7 ja 8 koos**.
+
+[**LED → SLOT → HID-baitide tabel ja skeem**](docs/LED_MAP.md)
+
+## Vilkur, mis ei ole päris politseiauto
+
+Esialgne efekt vaheldub kahe grupi vahel:
+
+- **A: LED 1 + 4** — rullik ja kolme lisanupu alune piirkond.
+- **B: LED 2 + 3 + 5 + 6 + 7 + 8** — ülejäänud valgustid, sh logo.
+
+Kollane vilgub ühes grupis, siis teises. Kiirus on seadistatav. Arvutil pole sireeni ja hiirega liikluses eelisõigust ka ei saa, aga tähelepanu suudab see küll tõmmata.
+
+## Kasutamine
+
+1. Laadi [Releases](https://github.com/liikane/openrgb-bloody-p93/releases) lehelt sobiv `OpenRGBBloodyP93Plugin.dll`.
+2. Sule OpenRGB täielikult ja kopeeri DLL kausta `%APPDATA%\OpenRGB\plugins\`.
+3. Käivita OpenRGB ning ava **Settings → Bloody P93** ja luba **Enable RGB control**.
+4. Vaates **Devices → Bloody P93 (community)** saad kaheksat LED-i eraldi värvida.
+5. Vilkumiseks märgi **Flashing beacon** ning soovi korral muuda intervalle ja LED-gruppe.
+
+RGB-lubamine ja värvid jäetakse taaskäivitamisel meelde. Vilkur ise ei hakka automaatselt uuesti vilkuma, sest hiir ei pea omanikku öösel ehmatama.
+
+### Teavitused
+
+Kui lubad **Enable local notification commands**, saab mõni muu kohalik programm saata hiirele käsu:
 
 ```powershell
 .\Send-P93Notification.ps1 -Event ALERT
 .\Send-P93Notification.ps1 -Event ERROR
 .\Send-P93Notification.ps1 -Event SUCCESS
+.\Send-P93Notification.ps1 -Event STOP
 ```
 
-Rakendus võtab sündmusi vastu üksnes sama arvuti pordil `127.0.0.1:45893`. E-posti, ntfy või ChatGPT-ga ühendamiseks peab vastav sündmuseallikas eraldi seda käsku käivitama.
+`ALERT` vilgutab kollast, `ERROR` punast, `SUCCESS` paneb kõik kaheksa LED-i ajutiselt roheliselt särama. Võimalik on siduda see ntfy või kohalike tööskriptidega. **ChatGPT vastuse valmimist plugin ise automaatselt ei tuvasta** — selleks peab eraldi sündmuse allikas käsu käivitama.
 
-**Täispikk dokumentatsioon:** [Kasutusjuhend](docs/KASUTUSJUHEND.md) · [HID-käskude kirjeldus (EN)](docs/HID_PROTOCOL.md) · [English Manual](docs/USER_MANUAL.md).
+## Tehnika ja juhendid
 
-**Ohutus:** plugin muudab ainult RGB-valgustust, mitte hiirenuppe, makrosid ega püsivara. Värv võib pärast programmi sulgemist alles jääda; varasema režiimi taastamiseks kasuta salvestatud Bloody WorkShop 8 profiili. Projekt ei ole Bloody ega OpenRGB ametlik toode. GPL-2.0-or-later.
+- [Eestikeelne põhjalik kasutusjuhend](docs/KASUTUSJUHEND.md)
+- [LED-numbrid, asukohad ja HID-baidid](docs/LED_MAP.md)
+- [Täpsed RGB-käsud](docs/HID_PROTOCOL.md)
+- [Ingliskeelne kasutusjuhend](docs/USER_MANUAL.md)
+- [Testitulemused](docs/VALIDATION.md)
+- [Portfooliolugu](docs/CASE_STUDY.md)
 
-## Uus: v0.2.1 säilitab seadistused
+Hiire RGB-muutus ja nupud on tegeliku seadmega kontrollitud. Uute LED-gruppide füüsilist vaheldumist tuleb eraldi kinnitada. Nupumakrosid, DPI-seadeid ega püsivara plugin ei kirjuta.
 
-Pärast OpenRGB taaskäivitamist taastatakse **Enable RGB control**, viimati valitud 15 värvikohta, vilkuri grupid ja kiirus ning kohalike teavituste lubamine. Vilkur ise **ei käivitu automaatselt**; see tuleb soovi korral uuesti sisse lülitada. Kasutaja saab RGB-juhtimise linnukese eemaldamisega salvestatult välja lülitada.
+Vajalikud on **Windows ja OpenRGB 1.1**; avaliku projekti litsents on **GPL-2.0-or-later**. Tegemist on sõltumatu hobi- ja katseprojektiga, mitte Bloody ega OpenRGB ametliku tootega.
 
-Tarkvara kasutab Windowsi Winsocki ega nõua eraldi Qt Network DLL-i. Seaded salvestatakse kohalikku kasutajaprofiili INI-faili. Uue versiooni funktsioonide tegelik käitumine tuleb enne ametlikku avaldamist hiirel kontrollida.
-
-**Riistvaratestide tulemused:** [v0.2.1 kontrolliprotokoll](docs/VALIDATION.md).
+*Kui hiirest sai vilkur, siis järgmine küsimus on: mida kõike võiks klaviatuur veel meile öelda?*
