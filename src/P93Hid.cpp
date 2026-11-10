@@ -1,4 +1,5 @@
 #include "P93Hid.h"
+#include "P93Protocol.h"
 #include <array>
 #include <algorithm>
 
@@ -15,7 +16,6 @@ constexpr unsigned short VENDOR_PAGE = 0xFF32;
 constexpr unsigned short VENDOR_USAGE = 0x0218;
 constexpr unsigned short REPORT_SIZE = 64;
 constexpr unsigned char REPORT_ID = 0x07;
-constexpr int LED_SLOTS = 15;
 
 bool IsTarget(const wchar_t* path)
 {
@@ -150,42 +150,31 @@ bool P93Hid::Send(const uint8_t data[64])
 
 bool P93Hid::SetColor(uint8_t red, uint8_t green, uint8_t blue)
 {
+    P93Protocol::Slots slots{};
+    slots.fill({red, green, blue});
+    return SetSlots(slots);
+}
+
+bool P93Hid::SetSlots(const P93Protocol::Slots& slots)
+{
     std::lock_guard<std::mutex> lock(mutex_);
 #ifdef _WIN32
     if(handle_ == INVALID_HANDLE_VALUE)
-    {
         return false;
-    }
 
     if(!direct_mode_)
     {
-        std::array<uint8_t, 64> mode1{};
-        mode1[0] = 7; mode1[1] = 3; mode1[2] = 6; mode1[3] = 1;
-
-        std::array<uint8_t, 64> mode2{};
-        mode2[0] = 7; mode2[1] = 3; mode2[2] = 6; mode2[3] = 0; mode2[8] = 1;
-
+        const auto mode1 = P93Protocol::RgbMode();
+        const auto mode2 = P93Protocol::DirectInit();
         if(!Send(mode1.data()) || !Send(mode2.data()))
-        {
             return false;
-        }
         direct_mode_ = true;
     }
 
-    std::array<uint8_t, 64> colors{};
-    colors[0] = 7; colors[1] = 3; colors[2] = 6; colors[3] = 2;
-
-    // 15 mapped LED slots, same color to all. No button or firmware commands.
-    for(int index = 0; index < LED_SLOTS; ++index)
-    {
-        colors[8 + 3*index + 0] = red;
-        colors[8 + 3*index + 1] = green;
-        colors[8 + 3*index + 2] = blue;
-    }
-
+    const auto colors = P93Protocol::ColorSlots(slots);
     return Send(colors.data());
 #else
-    (void)red; (void)green; (void)blue;
+    (void)slots;
     return false;
 #endif
 }

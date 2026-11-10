@@ -1,10 +1,15 @@
 #pragma once
 #include <atomic>
+#include <vector>
 #include <QObject>
 #include <QWidget>
 #include <QCheckBox>
 #include <QLabel>
 #include <QPushButton>
+#include <QSpinBox>
+#include <QLineEdit>
+#include <QTimer>
+#include <QUdpSocket>
 #include "OpenRGBPluginInterface.h"
 #include "P93Hid.h"
 
@@ -35,6 +40,9 @@ private:
     static void DeviceUpdateSingleLED(void* self, int led);
     void RegisterDevice();
     void ApplyColor();
+    void TickBeacon();
+    bool ParseGroups(std::vector<std::size_t>& left, std::vector<std::size_t>& right);
+    void HandleNotification();
 
     OpenRGBPluginAPIInterface* api_ = nullptr;
     RGBControllerInterface* controller_ = nullptr;
@@ -42,5 +50,17 @@ private:
     QWidget* widget_ = nullptr;
     QCheckBox* enable_ = nullptr;
     QLabel* status_ = nullptr;
+    QLabel* slot_status_ = nullptr;
+    QCheckBox* beacon_ = nullptr;
+    QSpinBox* interval_ = nullptr;
+    QLineEdit* left_slots_ = nullptr;
+    QLineEdit* right_slots_ = nullptr;
+    QTimer* beacon_timer_ = nullptr;
+    QTimer* notification_timeout_ = nullptr;
+    QCheckBox* notifications_ = nullptr;
+    QUdpSocket* notification_socket_ = nullptr;
+    P93Protocol::Color beacon_color_ = {255, 210, 0};
+    bool beacon_phase_ = false;
+    int next_slot_ = 0;
     std::atomic<bool> enabled_{false};
 };

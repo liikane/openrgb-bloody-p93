@@ -1,19 +1,30 @@
-# Bloody P93 OpenRGB plugin – eesti keeles
+# Tegin hiirest vilkuri
 
-Selle projekti eesmärk on kuvada Bloody P93 hiir **OpenRGB 1.1** seadmete nimekirjas ja juhtida selle valgustust, säilitades olemasolevad nupumakrod.
+### Bloody P93 RGB Bridge — OpenRGB 1.1 laiendus
 
-Windowsi masinal LAURIDELL on juba edukalt testitud otse-HID käsud: lilla püsivalgus ning punased/rohelised vilgutused. Plugin on nendest katsetest lähtuv **esialgne C++ arendus**.
+**Veidi lapsik, aga töötab: muutsime hiire tähelepanu püüdvaks valgusmärguandeks.** OpenRGB abil saab P93 värve juhtida, kasutada eri värvikohti ja teha kahe grupi vahelduva vilkuri. Kohalikud teavitused saavad käivitada punase/kollase märguande või rohelise õnnestumissignaali.
 
-## Kasutamine pärast DLL-i edukat ehitamist
+Kood ja katseversioonid: [GitHub](https://github.com/liikane/openrgb-bloody-p93) · [Allalaadimine](https://github.com/liikane/openrgb-bloody-p93/releases)
 
-1. Laadi [GitHubi avalikust katseversioonist v0.1.1-alpha.1](https://github.com/liikane/openrgb-bloody-p93/releases/tag/v0.1.1-alpha.1) DLL `OpenRGBBloodyP93Plugin.dll`.
-2. Paigalda see OpenRGB pluginate halduris.
-3. Ava **Bloody P93 RGB Bridge** seaded.
-4. Lülita sisse **Enable RGB control (experimental)**.
-5. Vali seadmete hulgast **Bloody P93 (community)** ja värv.
+**Päris hiirega kinnitatud 10.11.2026:** OpenRGB näitab Bloody P93 seadet, muudab värvi ning nupud töötavad. Uue v0.2 mitme LED-koha, vilkuri ja teavituste toe riistvarakatse on veel pooleli.
 
-Plugin ei saada alguses hiirele ühtegi käsku. Testi käivitamiseks tuleb juhtimine eraldi lubada. Värvirežiimi seadmine võib muuta hiire senist valgustust; salvesta Bloody WorkShop 8 profiil enne esimest proovimist.
+### Kuidas kasutada?
 
-**NB!** See on uus katseline plugin, mitte ametliku OpenRGB galerii juba avaldatud täiendus. Ametlikus kataloogis ilmumine nõuab selle haldajate heakskiitu.
+1. Paigalda OpenRGB 1.1 ja [lisa DLL](https://github.com/liikane/openrgb-bloody-p93/releases) kausta `%APPDATA%\OpenRGB\plugins\`.
+2. Taaskäivita OpenRGB ning luba **Settings → Bloody P93 → Enable RGB control**.
+3. Sakis **Devices → Bloody P93 (community)** vali üks 15 HID-värvikohast ja muuda selle värvi.
+4. Vaates **Settings → Bloody P93** kasuta nuppu **Identify next LED slot**, et näha, milline päris LED millisele järjekorranumbrile vastab.
+5. Vilkuri jaoks määra grupid A/B (vaikimisi 1–7 ja 8–15), kiirus ning märgi **Flashing beacon**.
+6. Teavituste jaoks märgi **Enable local notification commands** ning käivita näiteks:
 
-Lähtekoodi litsents: GPL-2.0-or-later.
+```powershell
+.\Send-P93Notification.ps1 -Event ALERT
+.\Send-P93Notification.ps1 -Event ERROR
+.\Send-P93Notification.ps1 -Event SUCCESS
+```
+
+Rakendus võtab sündmusi vastu üksnes sama arvuti pordil `127.0.0.1:45893`. E-posti, ntfy või ChatGPT-ga ühendamiseks peab vastav sündmuseallikas eraldi seda käsku käivitama.
+
+**Täispikk dokumentatsioon:** [Kasutusjuhend](docs/KASUTUSJUHEND.md) · [HID-käskude kirjeldus (EN)](docs/HID_PROTOCOL.md) · [English Manual](docs/USER_MANUAL.md).
+
+**Ohutus:** plugin muudab ainult RGB-valgustust, mitte hiirenuppe, makrosid ega püsivara. Värv võib pärast programmi sulgemist alles jääda; varasema režiimi taastamiseks kasuta salvestatud Bloody WorkShop 8 profiili. Projekt ei ole Bloody ega OpenRGB ametlik toode. GPL-2.0-or-later.

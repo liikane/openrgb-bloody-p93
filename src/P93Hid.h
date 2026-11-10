@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include "P93Protocol.h"
 #include <mutex>
 #include <string>
 #ifdef _WIN32
@@ -13,6 +14,7 @@ public:
     ~P93Hid();
     bool Connect(std::string& error);
     bool SetColor(uint8_t red, uint8_t green, uint8_t blue);
+    bool SetSlots(const P93Protocol::Slots& slots);
     void Close();
     bool Connected() const;
 private:

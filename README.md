@@ -1,75 +1,93 @@
-# OpenRGB Bloody P93 RGB Bridge
+# I Turned My Mouse into a Flashing Beacon
 
-**Experimental OpenRGB 1.1 plugin for the Bloody P93 gaming mouse.**
+### *Tegin hiirest vilkuri* — Bloody P93 RGB Bridge for OpenRGB
 
-Adds Bloody P93 RGB support to OpenRGB through **Plugin API v5**, without modifying OpenRGB itself or installing USB capture drivers.
+**Yes, it is a little ridiculous. That's the point.** Turn a Bloody P93 gaming mouse into a customizable notification beacon: independent HID RGB color slots, alternating yellow or red strobes, and signals from local automation.
 
-Built by [liikane](https://github.com/liikane). Contributions and testing are welcome.
+[![Windows build](https://github.com/liikane/openrgb-bloody-p93/actions/workflows/build-windows.yml/badge.svg)](https://github.com/liikane/openrgb-bloody-p93/actions/workflows/build-windows.yml)
+![OpenRGB 1.1](https://img.shields.io/badge/OpenRGB-1.1-blue)
+![License GPL 2.0+](https://img.shields.io/badge/license-GPL--2.0--or--later-green)
 
-## Verified hardware and protocol
+Developed by [liikane](https://github.com/liikane) as a free, open-source **OpenRGB 1.1 Plugin API v5** extension. Not affiliated with Bloody or the OpenRGB project.
 
-| Item | Value |
+## What works
+
+| Feature | Status |
 | --- | --- |
-| Mouse | Bloody P93 |
-| USB VID:PID | `09DA:31DE` |
-| HID interface | `MI_02 / COL04` |
-| HID Usage Page / Usage | `0xFF32 / 0x0218` |
-| Feature report | ID `0x07`, 64 bytes |
-| Commands | `07 03 06 01` (initialize), `07 03 06 00` (direct mode), `07 03 06 02` (RGB color) |
-| Confirmed on hardware | Static purple (`160,0,255`), red/green flashes |
-| Host target | OpenRGB 1.1, Windows x64, Qt 6.8.3 |
+| Detect Bloody P93 `09DA:31DE` on Windows | **Verified** |
+| OpenRGB Devices → change overall mouse RGB color | **Verified on physical hardware** (10 Nov 2026) |
+| Mouse buttons remain functional while changing color | **Verified by user** (10 Nov 2026) |
+| 15 independently configurable HID RGB **report slots** | Implemented; exact mapping to physical LEDs still being charted |
+| Alternating yellow/red “beacon” pattern in user-selected slot groups | Implemented, pending physical v0.2 test |
+| Local notification commands for automation/ntfy hooks | Implemented, pending physical v0.2 test |
+| No driver, firmware or button-macro changes | By design; only HID RGB feature commands are sent |
+| Genesis Rhod 600 keyboard support | **Separate next project**; not implemented here |
 
-A real Bloody P93 on Windows was tested. The standard OpenRGB release did not recognize this PID, despite recognizing other Bloody mouse models.
+## Quick start
 
-## Features
+1. Install [OpenRGB 1.1](https://openrgb.org/) on Windows x64 and connect a Bloody **P93**.
+2. Download a Windows DLL from [GitHub Releases](https://github.com/liikane/openrgb-bloody-p93/releases). The latest prerelease and its status are specified on that page.
+3. Close OpenRGB completely. Copy `OpenRGBBloodyP93Plugin.dll` into `%APPDATA%\OpenRGB\plugins\`, then restart OpenRGB.
+4. In **Settings → Bloody P93**, check **Enable RGB control (experimental)**.
+5. In **Devices**, select **Bloody P93 (community)**. Click a colored slot and choose a color.
 
-- Shows **Bloody P93 (community)** in OpenRGB's Devices list via a Plugin API v5 virtual controller.
-- Single RGB color control across the mouse LEDs, including color changes from the OpenRGB SDK and effects.
-- An **Enable RGB control** checkbox: no HID writes are sent when the plugin loads; you must opt in.
-- No button remapping, macro writes, DPI changes, firmware updates, or proprietary driver installation.
-- Direct Windows HID transport (SetupAPI and HID DLL).
+The plugin is **opt-in**: it does not send any mouse lighting commands until RGB control is enabled.
 
-**Limitations:** first preview, Windows only. Individual LED mapping is not established; all 15 known protocol slots receive the same color. Mode persistence and restoring original hardware lighting behavior after disabling the plugin have not yet been validated. Only use with the exact VID:PID and HID collection above.
+## The beacon
 
-## Installation (after a successful build)
-
-1. Download the experimental DLL from [v0.1.1-alpha.1](https://github.com/liikane/openrgb-bloody-p93/releases/tag/v0.1.1-alpha.1) (SHA-256 is provided in the release notes).
-2. Make sure you use **OpenRGB 1.1** on Windows x64; stop other utilities from changing the mouse lighting at the same moment.
-3. Open OpenRGB's plugin manager and install `OpenRGBBloodyP93Plugin.dll` (or place the DLL in the configured plugins directory, then restart OpenRGB).
-4. Find **Bloody P93 RGB Bridge** under the plugin settings. The mouse should appear as **Bloody P93 (community)** when connected.
-5. In the plugin settings, tick **Enable RGB control (experimental)**.
-6. In OpenRGB Devices select **Bloody P93 (community)** and change the Direct color.
-
-If the device does not appear, check the USB identity and the OpenRGB logs. The standard OpenRGB detector does not support this mouse until the plugin is installed.
-
-## Build from source
-
-This project is a standalone **Qt 6 / C++17** plugin. Build it against OpenRGB release `release_1.1` (Plugin API 5). On Windows use Qt **6.8.3** with MSVC 2022 to match OpenRGB's distributed Qt runtime.
+- 15 HID slots are exposed individually. Use **Identify next LED slot** to discover which actual light responds to each slot.
+- Enter the comma-separated slot numbers for groups A and B. The default is 1–7 versus 8–15; adjust them to match the *physical* left/right layout.
+- Set the interval (120–2000 ms) and enable **Flashing beacon**. The initial color is yellow.
+- For notification hooks, additionally enable **Local notification commands**. The plugin listens only on `127.0.0.1:45893`.
 
 ```powershell
+.\Send-P93Notification.ps1 -Event ALERT    # 5 s yellow beacon
+.\Send-P93Notification.ps1 -Event ERROR    # 5 s red beacon
+.\Send-P93Notification.ps1 -Event SUCCESS  # 1.8 s solid green
+.\Send-P93Notification.ps1 -Event STOP     # Restore OpenRGB colors
+```
+
+The included PowerShell command talks only to the **local** OpenRGB plugin. For ntfy or ChatGPT signals, configure a separate event source to invoke this command; it does not watch cloud services by itself.
+
+## Documentation / manuaal
+
+- [English user manual](docs/USER_MANUAL.md)
+- [Eestikeelne kasutusjuhend](docs/KASUTUSJUHEND.md)
+- [HID RGB protocol and exact commands](docs/HID_PROTOCOL.md)
+- [GitHub Issues](https://github.com/liikane/openrgb-bloody-p93/issues) for requests and bug reports
+
+## How it works
+
+```mermaid
+flowchart LR
+  A["OpenRGB color picker / effects"] --> B["Bloody P93 Plugin API v5"]
+  C["ntfy / PowerShell / automation"] --> D["Localhost notification event"]
+  D --> B
+  B --> E["64-byte Windows HID Feature report 0x07"]
+  E --> F["Bloody P93 RGB LEDs"]
+```
+
+**USB:** VID `0x09DA`, PID `0x31DE`, `MI_02/COL04`, UsagePage `0xFF32`, Usage `0x0218`. Feature report ID `0x07`, 64 bytes. Static color command starts `07 03 06 02` with fifteen (R,G,B) triplets. See [protocol documentation](docs/HID_PROTOCOL.md).
+
+## Build
+
+The plugin is C++17 + Qt 6.8.3. Match the OpenRGB 1.1 headers and ABI, using MSVC 2022 on Windows:
+
+```powershell
+git clone https://github.com/liikane/openrgb-bloody-p93.git
+cd openrgb-bloody-p93
 git clone --branch release_1.1 https://github.com/CalcProgrammer1/OpenRGB.git openrgb
 $env:OPENRGB_SOURCE_DIR = (Resolve-Path .\openrgb).Path
 qmake OpenRGBBloodyP93Plugin.pro
 nmake
 ```
 
-The produced DLL is in `dist/`. GitHub Actions builds the Windows version automatically.
+The resulting plugin DLL is in `dist/`. [GitHub Actions](https://github.com/liikane/openrgb-bloody-p93/actions) runs C++ protocol tests and builds a Windows DLL.
 
-## Safety
+## Safety and limitations
 
-The plugin does not connect to arbitrary HID devices; it checks `09DA:31DE`, `COL04`, the HID usage, report size and vendor report prefix before writing anything. The only HID writes are known RGB-mode and color reports. Hardware RGB color may persist after closing OpenRGB, depending on mouse firmware; restore your saved Bloody Workshop 8 profile if needed.
+The plugin is **experimental** and initially supports only the precise Bloody P93 HID identity. Mouse firmware, saved macros, DPI and button mappings are never intentionally written. Individual *physical* LED positions and all restart combinations are being verified; do not assume HID slot #1 is leftmost until measured. The local notification port is disabled by default.
 
-The source code is **GPL-2.0-or-later**. The project is independently maintained; it is not an official Bloody or OpenRGB release.
+A known working v0.1.1 prerelease demonstrated that the GUI color picker changes P93 lighting and mouse buttons still work. The new multi-slot/notification features require testing before being described as hardware-verified.
 
-## Roadmap
-
-- [ ] Confirm plugin's Windows DLL builds and loads in OpenRGB 1.1.
-- [ ] Test OpenRGB color picker and SDK event signals with the physical P93.
-- [ ] Verify LED mapping, DPI and macro preservation, reconnection, and cleanup.
-- [ ] Add automated simulated-HID regression tests.
-- [ ] Request a listing in the official [OpenRGB plugin catalog](https://openrgb.org/plugins) after a validated binary release.
-- [ ] Submit upstream device-support improvements to [OpenRGB on GitLab](https://gitlab.com/CalcProgrammer1/OpenRGB) for broader integration.
-
-## Project status
-
-**Experimental pre-release v0.1.1-alpha.1:** the DLL compiles and has been loaded by OpenRGB 1.1 on Windows, where the application log confirms device registration. The GUI color-picker test remains pending. This plugin is **not yet listed in the official OpenRGB catalog**.
+Public project and source: GPL-2.0-or-later. [Issue for the eventual official OpenRGB plugin-gallery listing](https://github.com/liikane/openrgb-bloody-p93/issues/1).
