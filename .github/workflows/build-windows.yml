@@ -13,6 +13,11 @@ jobs:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
+      - name: Test ntfy and Windows event classification bridge
+        shell: pwsh
+        run: |
+          python integrations/ntfy/test_bridge.py
+          if ($LASTEXITCODE -ne 0) { throw 'Notification bridge tests failed' }
       - uses: ilammy/msvc-dev-cmd@v1
       - name: Test HID RGB packet encoder (no hardware access)
         shell: pwsh
