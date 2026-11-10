@@ -11,6 +11,7 @@
 #include <QTimer>
 #include <cstdint>
 #include <QByteArray>
+#include <QColor>
 #include <QStringList>
 #include "OpenRGBPluginInterface.h"
 #include "P93Hid.h"
@@ -43,6 +44,7 @@ private:
     void RegisterDevice();
     void ApplyColor();
     void TickBeacon();
+    void UpdateColorButtons();
     bool ParseGroups(std::vector<std::size_t>& left, std::vector<std::size_t>& right);
     void HandleNotification();
     bool StartNotificationListener();
@@ -57,6 +59,8 @@ private:
     QLabel* slot_status_ = nullptr;
     QCheckBox* beacon_ = nullptr;
     QSpinBox* interval_ = nullptr;
+    QPushButton* beacon_color_a_button_ = nullptr;
+    QPushButton* beacon_color_b_button_ = nullptr;
     QLineEdit* left_slots_ = nullptr;
     QLineEdit* right_slots_ = nullptr;
     QTimer* beacon_timer_ = nullptr;
@@ -66,7 +70,9 @@ private:
     QTimer* color_persistence_timer_ = nullptr;
     QStringList pending_colors_;
     std::uintptr_t notification_socket_handle_ = ~std::uintptr_t{0};
-    P93Protocol::Color beacon_color_ = {255, 210, 0};
+    QColor beacon_color_a_{255, 210, 0};
+    QColor beacon_color_b_{255, 210, 0};
+    bool notification_red_override_ = false;
     bool beacon_phase_ = false;
     int next_slot_ = 0;
     std::atomic<bool> enabled_{false};

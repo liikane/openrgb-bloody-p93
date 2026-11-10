@@ -51,6 +51,19 @@ int main()
         assert(a[i][1] == (isVisible && isA ? 210 : 0));
         assert(b[i][1] == (isVisible && !isA ? 210 : 0));
     }
-    std::cout << "P93 eight physical LEDs, 15 HID slots and beacon groups: PASS" << std::endl;
+    const auto customA = SplitBeacon(true, Color{255,0,0}, Color{0,0,255});
+    const auto customB = SplitBeacon(false, Color{255,0,0}, Color{0,0,255});
+    assert(customA[0] == (Color{255,0,0}));
+    assert(customA[3] == (Color{255,0,0}));
+    assert(customA[1] == (Color{0,0,0}));
+    assert(customB[1] == (Color{0,0,255}));
+    assert(customB[7] == (Color{0,0,255}));
+    assert(customB[0] == (Color{0,0,0}));
+    for(std::size_t i=PhysicalLedCount;i<SlotCount;++i)
+    {
+        assert(customA[i] == (Color{0,0,0}));
+        assert(customB[i] == (Color{0,0,0}));
+    }
+    std::cout << "P93 eight physical LEDs, customizable beacon colors: PASS" << std::endl;
     return 0;
 }

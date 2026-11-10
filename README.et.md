@@ -12,6 +12,10 @@ Projekt on vabavaraline OpenRGB 1.1 laiendus Bloody P93 hiirele. Ingliskeelne al
 
 [**Lähtekood GitHubis**](https://github.com/liikane/openrgb-bloody-p93) · [Allalaadimine](https://github.com/liikane/openrgb-bloody-p93/releases) · [English](README.md) · [Kasutusjuhend](docs/KASUTUSJUHEND.md)
 
+## Kas ka teiste tootjate hiirtega?
+
+Tasub katsetada ja uurida: eri tootjate mängurihiirtel võib olla sarnane USB/HID-kontroller ja RGB-valgustuse protokoll. Võrdle kõigepealt USB VID/PID tunnuseid, HID-kogumeid, aruannete pikkust ja tootja rakenduse valgustuskäske. **Ära saada Bloody P93 käske tundmatule hiirele.** See plugin toetab praegu ainult Bloody P93 mudelit `09DA:31DE`; muud seadmed vajavad eraldi valideeritud tuge.
+
 ## Kus hiire LED-id on?
 
 ![Hiire ülaltvaade ja LED-ide numbrid](docs/mouse-led-map.svg)
@@ -26,15 +30,21 @@ Kõige nähtavam on **LED 1 ehk rullik**. Hiire logo valgustavad **7 ja 8 koos**
 
 Esialgne efekt vaheldub kahe grupi vahel:
 
-- **A: LED 1 + 4** — rullik ja kolme lisanupu alune piirkond.
+- **A: LED 1 + 4** — rullik ja kolme rulliku taga asuv LED.
 - **B: LED 2 + 3 + 5 + 6 + 7 + 8** — ülejäänud valgustid, sh logo.
 
 Kollane vilgub ühes grupis, siis teises. Kiirus on seadistatav. Arvutil pole sireeni ja hiirega liikluses eelisõigust ka ei saa, aga tähelepanu suudab see küll tõmmata.
 
+## Värvid ja vilkumiskiirus
+
+Ava **Settings → Bloody P93**. Väljad **Group A color** ja **Group B color** avavad kumbki värvivalikudialoogi. Mõlemale vilkumisgrupile saad määrata eri värvi, näiteks A kollaseks ja B siniseks. **Beacon interval** määrab vaheldumise kiiruse 120–2000 ms; väiksem number tähendab kiiremat vilkumist. Seaded salvestatakse.
+
+Kohalik `ALERT` kasutab sinu värve, `ERROR` vilgutab punast ja `SUCCESS` rohelist. Pärast teavitust taastatakse tavavärvid.
+
 ## Kasutamine
 
 1. Laadi [Releases](https://github.com/liikane/openrgb-bloody-p93/releases) lehelt sobiv `OpenRGBBloodyP93Plugin.dll`.
-2. Sule OpenRGB täielikult ja kopeeri DLL kausta `%APPDATA%\OpenRGB\plugins\`.
+2. Sule OpenRGB täielikult ja kopeeri DLL kausta `%APPDATA%\OpenRGB\plugins`.
 3. Käivita OpenRGB ning ava **Settings → Bloody P93** ja luba **Enable RGB control**.
 4. Vaates **Devices → Bloody P93 (community)** saad kaheksat LED-i eraldi värvida.
 5. Vilkumiseks märgi **Flashing beacon** ning soovi korral muuda intervalle ja LED-gruppe.
@@ -59,6 +69,7 @@ Kui lubad **Enable local notification commands**, saab mõni muu kohalik program
 - [Eestikeelne põhjalik kasutusjuhend](docs/KASUTUSJUHEND.md)
 - [LED-numbrid, asukohad ja HID-baidid](docs/LED_MAP.md)
 - [Täpsed RGB-käsud](docs/HID_PROTOCOL.md)
+- [Windowsi teavitustega ühendamise plaan](docs/WINDOWS_NOTIFICATIONS.md)
 - [Ingliskeelne kasutusjuhend](docs/USER_MANUAL.md)
 - [Testitulemused](docs/VALIDATION.md)
 - [Portfooliolugu](docs/CASE_STUDY.md)

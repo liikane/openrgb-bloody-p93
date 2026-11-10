@@ -10,6 +10,7 @@
 #include <QPushButton>
 #include <QCheckBox>
 #include <QSettings>
+#include <QColorDialog>
 #include <QVariant>
 #include <QStringList>
 #include <QSet>
@@ -37,7 +38,7 @@ OpenRGBPluginInfo BloodyP93Plugin::GetPluginInfo()
     OpenRGBPluginInfo info{};
     info.Name = "True Mouse Art";
     info.Description = "Bloody P93 mouse OpenRGB Plugin / I Turned My Mouse into a Flashing Beacon!";
-    info.Version = "0.3.0";
+    info.Version = "0.4.0";
     info.Commit = "community";
     info.URL = "https://github.com/liikane/openrgb-bloody-p93";
     info.Location = OPENRGB_PLUGIN_LOCATION_SETTINGS;
@@ -99,7 +100,28 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
     form->addRow("Beacon group A (slot numbers)", left_slots_);
     form->addRow("Beacon group B (slot numbers)", right_slots_);
     form->addRow("Beacon interval", interval_);
+    beacon_color_a_button_ = new QPushButton("Choose group A color...", widget_);
+    beacon_color_b_button_ = new QPushButton("Choose group B color...", widget_);
+    form->addRow("Group A color", beacon_color_a_button_);
+    form->addRow("Group B color", beacon_color_b_button_);
     layout->addLayout(form);
+
+    connect(beacon_color_a_button_, &QPushButton::clicked, this, [this] {
+        const QColor selected = QColorDialog::getColor(beacon_color_a_, widget_, "Select beacon group A color");
+        if(!selected.isValid()) return;
+        beacon_color_a_ = selected;
+        SaveSetting("beaconColorA", beacon_color_a_.name(QColor::HexRgb));
+        UpdateColorButtons();
+        if(beacon_ && beacon_->isChecked()) TickBeacon();
+    });
+    connect(beacon_color_b_button_, &QPushButton::clicked, this, [this] {
+        const QColor selected = QColorDialog::getColor(beacon_color_b_, widget_, "Select beacon group B color");
+        if(!selected.isValid()) return;
+        beacon_color_b_ = selected;
+        SaveSetting("beaconColorB", beacon_color_b_.name(QColor::HexRgb));
+        UpdateColorButtons();
+        if(beacon_ && beacon_->isChecked()) TickBeacon();
+    });
 
     beacon_ = new QCheckBox("Flashing beacon — alternate groups A and B (yellow)", widget_);
     beacon_->setEnabled(false);
@@ -126,6 +148,7 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
     notification_timeout_->setSingleShot(true);
     connect(notification_timeout_, &QTimer::timeout, this, [this]{
         if(beacon_) beacon_->setChecked(false);
+        notification_red_override_ = false;
         ApplyColor();
     });
 
@@ -257,6 +280,11 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
         }
     }
     interval_->setValue(LoadSetting("intervalMs", 320).toInt());
+    const QColor saved_a(LoadSetting("beaconColorA", QStringLiteral("#FFD200")).toString());
+    const QColor saved_b(LoadSetting("beaconColorB", QStringLiteral("#FFD200")).toString());
+    beacon_color_a_ = saved_a.isValid() ? saved_a : QColor(255, 210, 0);
+    beacon_color_b_ = saved_b.isValid() ? saved_b : QColor(255, 210, 0);
+    UpdateColorButtons();
     connect(left_slots_, &QLineEdit::editingFinished, this, [this]{
         SaveSetting("groupA", left_slots_->text().trimmed());
     });
@@ -271,6 +299,21 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
         if(LoadSetting("notificationsEnabled", false).toBool())
             notifications_->setChecked(true);
     }
+}
+
+void BloodyP93Plugin::UpdateColorButtons()
+{
+    auto style_button = [](QPushButton* button, const QColor& color, const QString& group) {
+        if(!button) return;
+        const int luminance = (color.red()*299 + color.green()*587 + color.blue()*114)/1000;
+        const QString fg = luminance > 155 ? QStringLiteral("#141414") : QStringLiteral("#FFFFFF");
+        button->setText(group + ": " + color.name(QColor::HexRgb).toUpper() + "  (Choose color...)");
+        button->setStyleSheet(QStringLiteral("QPushButton { background-color: %1; color: %2; "
+                         "border: 1px solid #777; border-radius: 4px; padding: 5px; }")
+                         .arg(color.name(QColor::HexRgb), fg));
+    };
+    style_button(beacon_color_a_button_, beacon_color_a_, QStringLiteral("A"));
+    style_button(beacon_color_b_button_, beacon_color_b_, QStringLiteral("B"));
 }
 
 bool BloodyP93Plugin::ParseGroups(std::vector<std::size_t>& left,
@@ -311,8 +354,16 @@ void BloodyP93Plugin::TickBeacon()
     }
 
     P93Protocol::Slots slot_colors{};
+    const QColor chosen = notification_red_override_
+                        ? QColor(255, 0, 0)
+                        : (beacon_phase_ ? beacon_color_b_ : beacon_color_a_);
+    const P93Protocol::Color color = {
+        static_cast<std::uint8_t>(chosen.red()),
+        static_cast<std::uint8_t>(chosen.green()),
+        static_cast<std::uint8_t>(chosen.blue())
+    };
     for(std::size_t i : (beacon_phase_ ? b : a))
-        slot_colors[i] = beacon_color_;
+        slot_colors[i] = color;
     beacon_phase_ = !beacon_phase_;
     if(!device_.SetSlots(slot_colors))
     {
@@ -397,6 +448,7 @@ void BloodyP93Plugin::HandleNotification()
         {
             notification_timeout_->stop();
             beacon_->setChecked(false);
+            notification_red_override_ = false;
             P93Protocol::Slots slot_colors{};
             for(std::size_t i=0; i<P93Protocol::PhysicalLedCount; ++i)
                 slot_colors[i] = {0, 255, 0};
@@ -405,16 +457,18 @@ void BloodyP93Plugin::HandleNotification()
         }
         else if(cmd == "P93:ALERT" || cmd == "P93:ERROR" || cmd == "P93:NOTICE")
         {
-            beacon_color_ = cmd == "P93:ERROR" ? P93Protocol::Color{255, 0, 0}
-                                             : P93Protocol::Color{255, 210, 0};
+            notification_red_override_ = (cmd == "P93:ERROR");
             if(!beacon_->isChecked())
                 beacon_->setChecked(true);
+            else
+                TickBeacon();
             notification_timeout_->start(5000);
         }
         else if(cmd == "P93:STOP")
         {
             notification_timeout_->stop();
             beacon_->setChecked(false);
+            notification_red_override_ = false;
             ApplyColor();
         }
     }
@@ -438,7 +492,7 @@ void BloodyP93Plugin::RegisterDevice()
     setup.location = "HID 09DA:31DE MI_02 COL04";
     setup.name = "Bloody P93 (community)";
     setup.vendor = "Bloody";
-    setup.version = "0.3.0";
+    setup.version = "0.4.0";
     setup.active_mode = 0;
     setup.type = DEVICE_TYPE_MOUSE;
     setup.flags = CONTROLLER_FLAG_VIRTUAL;

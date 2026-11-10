@@ -24,7 +24,7 @@ This is now an openly documented [LED-to-HID byte map](LED_MAP.md), not an opaqu
 
 ## The tiny beacon
 
-A single blinking color wasn't enough. Our first useful pattern now alternates **LED 1 + 4** (the prominent wheel and area under the extra buttons) against **LED 2 + 3 + 5 + 6 + 7 + 8** (the rest, including the logo). These groups flash in yellow or red, with a configurable interval.
+A single blinking color wasn't enough. Our first useful pattern now alternates **LED 1 + 4** (the prominent wheel and area immediately behind the wheel) against **LED 2 + 3 + 5 + 6 + 7 + 8** (the rest, including the logo). These groups flash in yellow or red, with a configurable interval.
 
 The logo, incidentally, lights up through LEDs **7 and 8 together**. Nobody promised that the logo was the most straightforward part of the project.
 

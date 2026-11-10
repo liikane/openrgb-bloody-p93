@@ -62,7 +62,7 @@ For example, for **LED 1 purple**, set bytes 8,9,10 to `A0 00 FF` (160,0,255). F
 | 1 | 1 | Wheel / middle button | 8 | 9 | 10 |
 | 2 | 2 | Left front | 11 | 12 | 13 |
 | 3 | 3 | Right front | 14 | 15 | 16 |
-| 4 | 4 | Middle, under 3 extra buttons | 17 | 18 | 19 |
+| 4 | 4 | Middle, directly behind the wheel | 17 | 18 | 19 |
 | 5 | 5 | Right middle | 20 | 21 | 22 |
 | 6 | 6 | Left middle | 23 | 24 | 25 |
 | 7 | 7 | Left rear, shared logo lighting | 26 | 27 | 28 |
@@ -78,7 +78,7 @@ The default beacon has two **complementary phases**, alternating every 320 ms in
 
 | Phase | Lit yellow `FF D2 00` | Off |
 |---|---|---|
-| **A** | **1 + 4** (wheel and extra-button group) | 2, 3, 5, 6, 7, 8 |
+| **A** | **1 + 4** (wheel and its immediately rearward LED) | 2, 3, 5, 6, 7, 8 |
 | **B** | **2 + 3 + 5 + 6 + 7 + 8** | 1, 4 |
 
 The plugin sends one normal color command per phase and changes these groups on a timer. This is **not** a left-right physical split; users may customize groups in the settings. The report still contains 15 fields, but each frame sets only the first eight.

@@ -14,6 +14,10 @@ What if a running task could finish and the mouse could glow green? What if an e
 
 **Developed by [liikane](https://github.com/liikane)** · [Releases](https://github.com/liikane/openrgb-bloody-p93/releases) · [Eesti keeles](README.et.md) · [Manual](docs/USER_MANUAL.md)
 
+## Other mice? Try investigating, not blindly applying commands
+
+Many gaming mice use similar USB/HID controller families, even across different brands. It is worth **researching** whether your mouse has comparable LED lighting hardware and protocol structure. Start by identifying its USB VID/PID, HID collections, Usage Page, report length, and the original manufacturer's RGB commands. **Do not send P93 reports to an unverified mouse.** The plugin intentionally supports **Bloody P93 (09DA:31DE)** only; supporting other models requires separate capture, verification, tests, and an explicit device entry.
+
 ## A mouse with eight lights and a mission
 
 ![Bloody P93 LED schematic](docs/mouse-led-map.svg)
@@ -22,7 +26,7 @@ The P93 has **8 physical RGB LEDs**, each available individually in OpenRGB, not
 
 **The default flashing beacon alternates:**
 
-- **Phase A:** LEDs **1 + 4** — wheel and the area under the extra buttons.
+- **Phase A:** LEDs **1 + 4** — wheel and the area immediately behind the wheel.
 - **Phase B:** LEDs **2 + 3 + 5 + 6 + 7 + 8** — front, sides, rear and logo.
 
 Both phases are yellow initially; the unselected LEDs go dark. You can change the interval (120–2000 ms) or edit the groups in the plugin. The effect is a center/perimeter beacon, not a literal left/right emergency-vehicle lightbar.
@@ -41,11 +45,17 @@ Both phases are yellow initially; the unselected LEDs go dark. You can change th
 | Remember settings when OpenRGB restarts | Tested in v0.2.1; retains RGB opt-in, slot colors, groups, interval |
 | Preserve Bloody WorkShop button macros | Plugin never writes button mappings or firmware; previous physical button test passed |
 
+### Customize the beacon
+
+Under **Settings → Bloody P93**, choose **Group A color** and **Group B color**. Either button opens a normal Windows/Qt color-picker dialog. You can choose different colors for the two alternating LED groups; the colors survive a restart. **Beacon interval** is the existing speed field (120–2000 ms): a smaller number means faster alternation.
+
+Manual beacons and `ALERT` use your chosen colors. `ERROR` temporarily overrides both to red and `SUCCESS` shows green. Normal colors return after the notification.
+
 ## Install and try
 
 1. Download the latest **compatible Windows DLL** from [Releases](https://github.com/liikane/openrgb-bloody-p93/releases). Verify the release notes before using a prerelease.
 2. Exit OpenRGB 1.1 completely, including the system tray.
-3. Copy `OpenRGBBloodyP93Plugin.dll` to `%APPDATA%\OpenRGB\plugins\` (create the folder if needed).
+3. Copy `OpenRGBBloodyP93Plugin.dll` to `%APPDATA%\OpenRGB\plugins` (create the folder if needed).
 4. Restart OpenRGB, open **Settings → Bloody P93** and check **Enable RGB control**. The setting is remembered.
 5. In **Devices → Bloody P93 (community)** change any of the **eight** LED colors.
 6. For the beacon, return to **Settings → Bloody P93**, adjust the groups or interval and check **Flashing beacon**.
@@ -77,6 +87,7 @@ See the [documented command protocol](docs/HID_PROTOCOL.md), which includes the 
 - [Eestikeelne kasutusjuhend](docs/KASUTUSJUHEND.md)
 - [Mouse diagram and LED/HID byte table](docs/LED_MAP.md)
 - [Full HID protocol reference](docs/HID_PROTOCOL.md)
+- [Windows notifications bridge — design and privacy](docs/WINDOWS_NOTIFICATIONS.md)
 - [Hardware verification notes](docs/VALIDATION.md)
 - [The portfolio story / case study](docs/CASE_STUDY.md)
 

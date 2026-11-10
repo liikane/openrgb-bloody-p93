@@ -13,7 +13,7 @@ Each visible LED is numbered identically to its corresponding 1-based HID RGB sl
 | **1** | 1 | Wheel / middle button | Rullik / keskmine klahv | **8** | 9 | 10 |
 | **2** | 2 | Left front | Vasak ees | **11** | 12 | 13 |
 | **3** | 3 | Right front | Parem ees | **14** | 15 | 16 |
-| **4** | 4 | Middle, beneath three extra buttons | Kolme lisanupu all keskel | **17** | 18 | 19 |
+| **4** | 4 | Middle, beneath three extra buttons | Kohe rulliku taga | **17** | 18 | 19 |
 | **5** | 5 | Right middle | Parem keskel | **20** | 21 | 22 |
 | **6** | 6 | Left middle | Vasak keskel | **23** | 24 | 25 |
 | **7** | 7 | Left rear; contributes to logo lighting | Vasak taga, valgustab ka logo | **26** | 27 | 28 |
