@@ -93,3 +93,37 @@ Original schematic and exact byte map: [LED_MAP.md](LED_MAP.md).
 - **After testing:** original user INI restored from `preferences-before-color-test.ini`, `rgbEnabled=true`, `notificationsEnabled=false`, UDP port 45893 closed. OpenRGB restarted and loaded plugin normally. Mouse button remapping, macro assignments and firmware were not changed.
 - **Further manual user check:** open new **Group A color / Group B color** dialog buttons and verify visual preview and saving after restarting OpenRGB. HID color generation and restoration are already verified from protocol readback.
 - **Windows notification integration:** standalone privacy-first tray bridge design published under `docs/WINDOWS_NOTIFICATIONS.md`. Separate GitHub issue #5 is open. It requires explicit Windows notification access permission and an app allowlist; no new software has been silently installed.
+## True Mouse Art v0.5.0-beta.1 — persistent alerts and 8-LED idle color animation (10 Nov 2026)
+
+**Device:** Bloody P93 physical USB HID interface, Windows LAURIDELL, OpenRGB 1.1.
+
+### Build and installation
+
+- GitHub Actions run 42903527652: Python notification bridge tests, native C++ P93 protocol/palette tests and MSVC/Qt 6.8.3 Windows plugin build all passed.
+- New DLL SHA-256: B176B72C2B18833CBE6950E1AB84A73EBAC18BA821F3B32C77DCC7E32CC530A1.
+- Installed v0.5 plugin to user OpenRGB plugin directory. Former v0.4 DLL backed up in local RGB-Uuring/OpenRGB-P93-v050/P93-v040-backup-20261110-231916.dll; preference file also backed up.
+- OpenRGB log explicitly showed registration of RGB controller Bloody P93 (community).
+
+### Verified with real mouse HID readback
+
+1. **Eight LED idle state:** all 8 physical RGB positions were nonblack and rotating through distinct colors every ~550 ms. The 7 unused report fields stayed black. Verified with read-only HidD_GetFeature samples over 6 seconds.
+2. **Persistent ERROR:** sent local ERROR event. Mouse alternated two red RGB slots (LED 1+4) with six yellow RGB slots, without the previous five-second timeout.
+3. **Concurrent SUCCESS:** sent SUCCESS while ERROR remained pending. The readback showed two green RGB slots alternating with six white slots, then returned to the red/yellow category. Two event categories alternated for more than 20 seconds; settings contained pendingEvents=ERROR, SUCCESS.
+4. **OpenRGB restart:** confirmed P93 registered again and pendingEvents=ERROR, SUCCESS remained persisted. Readback observed both error and completion palettes *after restart*, not just their presence in the INI file.
+5. **Acknowledgement:** sending local P93:ACK cleared the pending event categories. Readback immediately showed the full eight-LED nonblack moving rainbow animation, not black. Settings showed no pending events.
+6. **Bridge global hotkey registration:** local ntfy bridge log reported Global acknowledgement hotkey registered: Ctrl+Shift+F12. The actual human keypress event has not yet been verified; explicit ACK UDP handling was verified.
+
+### Automatic startup
+
+- Configured two per-user Windows scheduled tasks: True Mouse Art Notification Bridge (existing, starts headless ntfy/Windows event bridge), and OpenRGB - True Mouse Art (new, starts OpenRGB minimized using the supported --startminimized argument).
+- Both are ordinary interactive-user startup tasks; no admin service, no mouse button remapping. Full sign-out/sign-in exercise still awaits the user.
+
+### Safety and limits
+
+- Event queue capacity: 16 categories, each with its distinct pair of flashing colors, 2 full A/B cycles per category before showing the next.
+- Persistent alert phase length at least 500 ms; idle RGB cycle defaults to 550 ms per step.
+- Stored categories and idle preferences do not include ntfy message text, subjects, or identities.
+- P93 button assignments/macros/firmware have not been changed by this release; direct physical macro test for v0.5 still to be confirmed.
+- During locked Windows sessions or when the PC is asleep, hardware visibility depends on OS/USB power and whether OpenRGB is running. Alerts are persistent after *receipt by the running plugin*, not guaranteed for messages sent while the computer or OpenRGB is offline.
+
+**Instructions:** [PERSISTENT_ALERTS.md](PERSISTENT_ALERTS.md). Source state machine: src/P93Signals.h and src/BloodyP93Plugin.cpp.
