@@ -100,3 +100,9 @@ GitHub Actions automatically builds the plugin for **OpenRGB 1.1**, Windows x64,
 The plugin is available under **GPL-2.0-or-later**. It is independent of both Bloody and the OpenRGB project.
 
 *Next adventure: can we teach a Genesis Rhod 600 keyboard to react to events too?*
+
+## Notifications: ntfy + selected Windows events
+
+A small Python bridge subscribes to an existing **ntfy** channel and to four selected Windows Event Log events, mapping them to the plugin's local ALERT / NOTICE / ERROR / SUCCESS signals. It runs in the background and can start at Windows logon. It needs **no extra Python packages**, stores no raw notification text, and does not change mouse macros.
+
+See [installation and configuration](integrations/ntfy/README.md), [real-hardware integration test](integrations/ntfy/VALIDATION.md), and the separate [Windows Toast notification roadmap](docs/WINDOWS_NOTIFICATIONS.md). **Windows Event Log events are not the same as arbitrary Windows notification-center Toasts.**

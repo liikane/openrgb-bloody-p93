@@ -79,3 +79,9 @@ Hiire RGB-muutus ja nupud on tegeliku seadmega kontrollitud. Uute LED-gruppide f
 Vajalikud on **Windows ja OpenRGB 1.1**; avaliku projekti litsents on **GPL-2.0-or-later**. Tegemist on sõltumatu hobi- ja katseprojektiga, mitte Bloody ega OpenRGB ametliku tootega.
 
 *Kui hiirest sai vilkur, siis järgmine küsimus on: mida kõike võiks klaviatuur veel meile öelda?*
+
+## NTFY ja Windowsi süsteemiteated
+
+Lisatud on väike **Pythonis kirjutatud taustasild**, mis kuulab olemasolevat NTFY kanalit ning nelja valitud Windowsi sündmuslogi teadet. See muudab need hiirel roheliseks kinnituseks või kollaseks/punaseks vilkuriks. Sild kasutab ainult kohalikku UDP-ühendust, ei talleta teavituste sisu ja saab käivituda Windowsisse sisselogimisel.
+
+[Paigaldus- ja kasutusjuhend](integrations/ntfy/README.md) · [HID-iga kinnitatud test](integrations/ntfy/VALIDATION.md) · [Windowsi hüpikteavituste tulevikuplaan](docs/WINDOWS_NOTIFICATIONS.md). Windowsi sündmuslogi ei võrdu veel kogu Windowsi teavituskeskusega.

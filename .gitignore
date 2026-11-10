@@ -16,3 +16,6 @@ build/
 .vs/
 *.log
 __pycache__/
+**/settings.json
+**/.env
+**/*token*.json

@@ -54,3 +54,7 @@ Users must not assume all Windows events appear as Toast notifications (some are
 - [ ] Demonstrate end-to-end Windows Toast -> local P93 RGB effect.
 
 No standalone listener has yet been installed or enabled on LAURIDELL.
+
+## Interim bridge shipped (10 November 2026)
+
+A lightweight Python integration is available: [ntfy + Windows Event Log bridge](../integrations/ntfy/README.md). It subscribes to the user's ntfy JSON stream and **four specific future Windows Event Log events** using the native Windows EvtSubscribe API: Microsoft Defender IDs 1116/1117 and Windows Update IDs 19/20. Actual ntfy-to-P93 HID output was verified. It does **not** read generic Windows Toast messages; those require the separate opt-in packaged application described above.
