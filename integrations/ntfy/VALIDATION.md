@@ -42,3 +42,12 @@ The four event subscriptions are **active for future events** and don't read eve
 ## Startup task reliability follow-up
 
 The scheduled task was installed under the current Windows user and launched a single pythonw background process when manually triggered. During an additional launch test, an ntfy JSON stream connected but did not deliver some subsequently published messages. A fallback `poll=1&since=...` worker was therefore added at ~12-second intervals, with message-ID deduplication and a 2-minute freshness cutoff. Pending final scheduled-task end-to-end validation for this updated version.
+
+## Final bridge restart check — 10 November 2026
+
+- Windows Task Scheduler **True Mouse Art Notification Bridge** successfully launched a single background `pythonw.exe` instance for the logged-in user. The process was observed running; its first ntfy connection was delayed on LAURIDELL and some alerts were dispatched late.
+- A **12-second cached-message fallback** was therefore added alongside the original ntfy JSON stream. Stream and fallback share a 400-ID deduplication buffer and ignore messages older than 120 seconds. The message handling and stale-event suppression logic passed a new Python unit test.
+- The current v0.2 bridge build was restarted manually while the per-user logon task remains registered for future login sessions. It connected to ntfy and registered all four Windows event subscriptions.
+- A low-priority test message with explicit `p93_alert` tag was published to the existing ntfy channel (HTTP 200); the bridge reported `Sent local P93 event=ALERT source=ntfy-stream` at **15:27:34** local time. No duplicate dispatch was observed in the test window.
+- A previous normal-priority ntfy test confirmed the actual P93 mouse color response via read-only HID reports.
+- The complete Windows notification center/Toast collector is still separate future work requiring user permission. The native event-log subscriptions and ntfy bridge do not read arbitrary toast content.
