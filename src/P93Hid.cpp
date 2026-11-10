@@ -150,12 +150,12 @@ bool P93Hid::Send(const uint8_t data[64])
 
 bool P93Hid::SetColor(uint8_t red, uint8_t green, uint8_t blue)
 {
-    P93Protocol::Slots slots{};
-    slots.fill({red, green, blue});
-    return SetSlots(slots);
+    P93Protocol::Slots slot_colors{};
+    slot_colors.fill({red, green, blue});
+    return SetSlots(slot_colors);
 }
 
-bool P93Hid::SetSlots(const P93Protocol::Slots& slots)
+bool P93Hid::SetSlots(const P93Protocol::Slots& slot_colors)
 {
     std::lock_guard<std::mutex> lock(mutex_);
 #ifdef _WIN32
@@ -171,10 +171,10 @@ bool P93Hid::SetSlots(const P93Protocol::Slots& slots)
         direct_mode_ = true;
     }
 
-    const auto colors = P93Protocol::ColorSlots(slots);
+    const auto colors = P93Protocol::ColorSlots(slot_colors);
     return Send(colors.data());
 #else
-    (void)slots;
+    (void)slot_colors;
     return false;
 #endif
 }

@@ -148,9 +148,9 @@ void BloodyP93Plugin::Load(OpenRGBPluginAPIInterface* api)
         if(!enabled_.load()) return;
         notification_timeout_->stop();
         beacon_->setChecked(false);
-        P93Protocol::Slots slots{};
-        slots[static_cast<std::size_t>(next_slot_)] = {255,210,0};
-        if(device_.SetSlots(slots))
+        P93Protocol::Slots slot_colors{};
+        slot_colors[static_cast<std::size_t>(next_slot_)] = {255,210,0};
+        if(device_.SetSlots(slot_colors))
         {
             slot_status_->setText(QString("Active protocol slot: %1/15. Record which physical LED lights up.")
                 .arg(next_slot_ + 1));
@@ -247,11 +247,11 @@ void BloodyP93Plugin::TickBeacon()
         return;
     }
 
-    P93Protocol::Slots slots{};
+    P93Protocol::Slots slot_colors{};
     for(std::size_t i : (beacon_phase_ ? b : a))
-        slots[i] = beacon_color_;
+        slot_colors[i] = beacon_color_;
     beacon_phase_ = !beacon_phase_;
-    if(!device_.SetSlots(slots))
+    if(!device_.SetSlots(slot_colors))
     {
         beacon_->setChecked(false);
         status_->setText("Beacon HID write failed. Retry device detection.");
@@ -271,9 +271,9 @@ void BloodyP93Plugin::HandleNotification()
         {
             notification_timeout_->stop();
             beacon_->setChecked(false);
-            P93Protocol::Slots slots{};
-            slots.fill({0,255,0});
-            if(device_.SetSlots(slots)) notification_timeout_->start(1800);
+            P93Protocol::Slots slot_colors{};
+            slot_colors.fill({0,255,0});
+            if(device_.SetSlots(slot_colors)) notification_timeout_->start(1800);
         }
         else if(cmd == "P93:ALERT" || cmd == "P93:ERROR" || cmd == "P93:NOTICE")
         {
@@ -362,17 +362,17 @@ void BloodyP93Plugin::ApplyColor()
     if(!enabled_.load() || !controller_ || (beacon_ && beacon_->isChecked()))
         return;
 
-    P93Protocol::Slots slots{};
+    P93Protocol::Slots slot_colors{};
     for(std::size_t i=0;i<P93Protocol::SlotCount;++i)
     {
         const RGBColor color = controller_->GetColor(static_cast<unsigned int>(i));
-        slots[i] = {
+        slot_colors[i] = {
             static_cast<std::uint8_t>(RGBGetRValue(color)),
             static_cast<std::uint8_t>(RGBGetGValue(color)),
             static_cast<std::uint8_t>(RGBGetBValue(color))
         };
     }
-    if(!device_.SetSlots(slots))
+    if(!device_.SetSlots(slot_colors))
     {
         enabled_.store(false);
         QMetaObject::invokeMethod(this, [this]{
