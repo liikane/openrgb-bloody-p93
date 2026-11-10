@@ -34,3 +34,5 @@ Rakendus võtab sündmusi vastu üksnes sama arvuti pordil `127.0.0.1:45893`. E-
 Pärast OpenRGB taaskäivitamist taastatakse **Enable RGB control**, viimati valitud 15 värvikohta, vilkuri grupid ja kiirus ning kohalike teavituste lubamine. Vilkur ise **ei käivitu automaatselt**; see tuleb soovi korral uuesti sisse lülitada. Kasutaja saab RGB-juhtimise linnukese eemaldamisega salvestatult välja lülitada.
 
 Tarkvara kasutab Windowsi Winsocki ega nõua eraldi Qt Network DLL-i. Seaded salvestatakse kohalikku kasutajaprofiili INI-faili. Uue versiooni funktsioonide tegelik käitumine tuleb enne ametlikku avaldamist hiirel kontrollida.
+
+**Riistvaratestide tulemused:** [v0.2.1 kontrolliprotokoll](docs/VALIDATION.md).
