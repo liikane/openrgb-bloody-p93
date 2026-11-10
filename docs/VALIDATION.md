@@ -67,3 +67,15 @@ The P93 owner has identified **eight** physical LEDs, not fifteen. The HID RGB r
 The v0.2.1 beacon test above describes the **old 7-slot / 8-slot HID-field split** and remains useful as historical evidence that the mouse receives two distinct command frames. The **new visible LED grouping** proposed by the owner is **A = 1+4**, **B = 2+3+5+6+7+8**. The new v0.3.0 build and HID report verification are separate tests; do not interpret the original split as evidence that fifteen physical LEDs exist.
 
 Original schematic and exact byte map: [LED_MAP.md](LED_MAP.md).
+
+## True Mouse Art v0.3.0 — eight physical LEDs, new group split
+
+- **Owner-confirmed physical LED count:** 8. Protocol includes 15 RGB triple fields, but only 1–8 are physically present. Slots 9–15 stay zero and are hidden from the OpenRGB UI.
+- **Owner-confirmed layout:** 1 wheel, 2 left front, 3 right front, 4 below three extra buttons, 5 right middle, 6 left middle, 7 left rear, 8 right rear/center. Mouse logo is illuminated by 7 and 8 together.
+- **Branding:** *True Mouse Art / Bloody P93 mouse OpenRGB Plugin / I Turned My Mouse into a Flashing Beacon!*; Estonian headline *Tegin hiirest vilkuri*.
+- **Default new beacon:** alternating physical LEDs 1+4 with LEDs 2+3+5+6+7+8 (yellow `FF D2 00`).
+- **Automated build:** [GitHub Actions run 42788972975](https://github.com/liikane/openrgb-bloody-p93/actions/runs/42788972975) passed both HID packet unit tests and Windows plugin DLL compilation.
+- **Local installation:** v0.3 DLL SHA-256 `7491A558BFD3622BE2DCE38EA68C483973B281120D2D891C61513258EE05A036`; prior v0.2.1 DLL backed up locally. OpenRGB v1.1 log explicitly shows `[PluginManager] Registering RGB controller Bloody P93 (community)`.
+- **Actual P93 HID test:** Sent `P93:ALERT` over local UDP. Read-only `HidD_GetFeature` recorded repeating 2-slot yellow/13-slot black report and 6-slot yellow/9-slot black report. Seven of the inactive slots are the P93's unused 9–15 positions. The test stopped after about five seconds and returned to the previous configured color. This proves the requested 2/6 split is sent to the physical device. **Which physical LEDs are lit at each moment still needs user visual confirmation.**
+- **After test:** notifications disabled, UDP port 45893 closed, `rgbEnabled=true` remained persisted, OpenRGB restarted and P93 controller registered normally.
+- **Still to check manually:** screenshot button/macro after v0.3 update; visually confirm the wheel and button-area blink against the six outer lights. These observations must not be claimed as verified before the owner confirms.
