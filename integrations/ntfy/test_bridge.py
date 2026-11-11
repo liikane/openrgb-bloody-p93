@@ -48,6 +48,27 @@ class NtfyBridgeTests(unittest.TestCase):
     def test_no_unexpected_event_output(self):
         self.assertEqual(m.VALID_EVENTS, {"ALERT", "ERROR", "NOTICE", "SUCCESS", "STOP", "ACK"})
 
+    def test_one_event_fans_out_to_p93_and_optional_keyboard(self):
+        from unittest.mock import patch
+        destinations = []
+        class DummySocket:
+            def __enter__(self): return self
+            def __exit__(self, *args): pass
+            def sendto(self, content, dest):
+                destinations.append((content, dest))
+        with patch.object(m.socket, "socket", return_value=DummySocket()):
+            m.send_local("ALERT")
+        self.assertEqual(destinations, [
+            (b"P93:ALERT", ("127.0.0.1", 45893)),
+            (b"RHOD600:ALERT", ("127.0.0.1", 45894)),
+        ])
+        with patch.object(m.socket, "socket", return_value=DummySocket()):
+            m.send_local("ACK")
+        self.assertEqual(destinations[-2:], [
+            (b"P93:ACK", ("127.0.0.1", 45893)),
+            (b"RHOD600:ACK", ("127.0.0.1", 45894)),
+        ])
+
     def test_expected_windows_events_only(self):
         self.assertEqual({(channel, eid) for channel, eid, _ in m.SYSTEM_EVENTS},
                          {("Microsoft-Windows-Windows Defender/Operational", 1116),
