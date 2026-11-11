@@ -18,6 +18,11 @@ jobs:
         run: |
           python integrations/ntfy/test_bridge.py
           if ($LASTEXITCODE -ne 0) { throw 'Notification bridge tests failed' }
+      - name: Test Genesis Rhod 600 color and notification protocol (no USB writes)
+        shell: pwsh
+        run: |
+          python integrations/rhod600/test_protocol.py
+          if ($LASTEXITCODE -ne 0) { throw 'Rhod 600 tests failed' }
       - uses: ilammy/msvc-dev-cmd@v1
       - name: Test HID RGB packet encoder (no hardware access)
         shell: pwsh

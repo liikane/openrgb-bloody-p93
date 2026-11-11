@@ -31,6 +31,7 @@ STATE_DIR = Path(os.environ.get("P93_BRIDGE_STATE_DIR", str(Path.home() / "Porta
 LOG_PATH = STATE_DIR / "bridge.log"
 LOCAL_IP = "127.0.0.1"
 LOCAL_PORT = 45893
+RHOD600_PORT = 45894  # Optional separately installed Genesis Rhod600 adapter
 
 # Windows Event Logs: receive future matched events only, not private event descriptions.
 SYSTEM_EVENTS = (
@@ -299,6 +300,9 @@ def send_local(event: str) -> None:
         raise ValueError("Invalid local event")
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp:
         udp.sendto(f"P93:{event}".encode("ascii"), (LOCAL_IP, LOCAL_PORT))
+        # Sending to an unused localhost UDP port is harmless: the keyboard
+        # adapter is optional and never has to be installed by P93 users.
+        udp.sendto(f"RHOD600:{event}".encode("ascii"), (LOCAL_IP, RHOD600_PORT))
 
 
 def run_bridge(config_path: Path, windows_events: bool, ntfy_events: bool,

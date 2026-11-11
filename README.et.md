@@ -89,3 +89,7 @@ Vajalikud on **Windows ja OpenRGB 1.1**; avaliku projekti litsents on **GPL-2.0-
 Lisatud on väike **Pythonis kirjutatud taustasild**, mis kuulab olemasolevat NTFY kanalit ning nelja valitud Windowsi sündmuslogi teadet. See muudab need hiirel roheliseks kinnituseks või kollaseks/punaseks vilkuriks. Sild kasutab ainult kohalikku UDP-ühendust, ei talleta teavituste sisu ja saab käivituda Windowsisse sisselogimisel.
 
 [Paigaldus- ja kasutusjuhend](integrations/ntfy/README.md) · [HID-iga kinnitatud test](integrations/ntfy/VALIDATION.md) · [Windowsi hüpikteavituste tulevikuplaan](docs/WINDOWS_NOTIFICATIONS.md). Windowsi sündmuslogi ei võrdu veel kogu Windowsi teavituskeskusega.
+
+## Genesis Rhod 600 klaviatuur — kuus märguandetsooni
+
+Sama NTFY sild edastab nüüd `ALERT`, `ERROR`, `SUCCESS`, `NOTICE` ja `ACK` käsud soovi korral ka **Genesis Rhod 600 klaviatuurile**. Klaviatuuri kuue AREA värvikäsk on kinnitatud tootjaprogrammi väljundraportitega; seal saab valida seitse kindlat värvi. Häired vahelduvad punane-sinine, punane-kollane, roheline-valge või roheline-kollane kuni kinnitamiseni. Tavarežiimis liigub kuue tsooni värvijada. Klaviatuur ei nõua OpenRGB-d. [Klaviatuuri paigaldamine ja ohutu kasutamine](integrations/rhod600/README.md).
