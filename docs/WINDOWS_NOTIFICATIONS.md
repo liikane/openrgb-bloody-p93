@@ -43,11 +43,31 @@ Notifications may contain personal email subjects, names, calendar details, one-
 
 Users must not assume all Windows events appear as Toast notifications (some are native dialogs, tray changes, and application-only alerts). ChatGPT web completion is **not automatically available** through the notification API unless a separate desktop application emits a Windows Toast event.
 
+## Offline policy core
+
+[`integrations/windows_notifications/core.py`](../integrations/windows_notifications/core.py) is a standard-library-only foundation for the shared notification service, **not a listener, tray app, or installable package**. Nothing runs automatically or changes the plugin. Run its synthetic tests with:
+
+```sh
+python integrations/windows_notifications/test_core.py
+```
+
+The version 1 in-process event schema is `NotificationEvent(kind)`, where `kind` is one of `EventKind.ALERT`, `ERROR`, `SUCCESS`, or `NOTICE`. It contains no app ID, notification ID, title, body, or other content. A future acquisition layer supplies only `ToastId(app_id, notification_id)` values to `NotificationPolicy`; IDs are case-sensitive and notification IDs are unsigned 32-bit integers. `set_rules` replaces the initially empty allowlist with explicit app-ID-to-kind rules. Classification comes solely from those rules, never from notification text. The same events can be consumed by future OpenRGB Bridge or Vilgutaja adapters.
+
+Call `initialize` once with a complete current Toast snapshot before processing subsequent complete snapshots with `process_snapshot`. Startup IDs and all seen IDs, including disallowed ones, are suppressed for the rest of the session; enabling an app later does not replay old Toasts. IDs are retained only in memory. If the session would exceed 100,000 distinct IDs, the policy fails closed; restart and establish a new baseline. A future listener must serialize or otherwise reconcile subscription and startup snapshot handling, including notifications arriving during startup, without replaying old notifications. It must keep feeding snapshots while paused so that resuming does not replay accumulated Toasts.
+
+`P93Sender` starts disabled. A future UI must set it enabled only after explicit user opt-in and disable it on pause or revoke. It sends only `P93:<kind>` as ASCII to `127.0.0.1:45893`; no other destination is configurable. UDP does **not** reveal whether the plugin receiver is enabled or whether the device reacted. The user must separately enable the plugin receiver; a successful send is not a delivery confirmation. This sender has no queue or retry.
+
+Still required before this is a Windows notification bridge:
+
+- Package an app with identity and `userNotificationListener` capability, explain the privacy implications, request access on the UI thread, and provide pause, allowlist, and revocation controls. Verify subscription in the packaged app; unpackaged `NotificationChanged` is unreliable ([Windows App SDK #6172](https://github.com/microsoft/WindowsAppSDK/issues/6172)).
+- On Windows 11, verify permission denial/revocation, startup suppression and allowlisting with real Toasts, then verify an allowed Toast causes the selected P93 effect and a disallowed app causes none. No real Toast listener or P93 hardware behavior has been validated by these synthetic tests.
+
 ## Current status
 
 - [x] P93 plugin supports opt-in local commands `P93:ALERT`, `P93:NOTICE`, `P93:ERROR`, `P93:SUCCESS`, `P93:STOP`.
 - [x] Standalone PowerShell sender available in repository.
 - [x] Bridge architecture and privacy constraints documented.
+- [x] Offline event policy and opt-in loopback sender covered by synthetic tests.
 - [ ] Build and test separate Windows tray bridge with supported app identity/manifest.
 - [ ] Implement Windows notification access permission and allowlist UI.
 - [ ] Verify notification deduplication, filtering and classification on Windows 11.
