@@ -18,6 +18,11 @@ jobs:
         run: |
           python integrations/ntfy/test_bridge.py
           if ($LASTEXITCODE -ne 0) { throw 'Notification bridge tests failed' }
+      - name: Test offline Windows notification policy
+        shell: pwsh
+        run: |
+          python integrations/windows_notifications/test_core.py
+          if ($LASTEXITCODE -ne 0) { throw 'Windows notification policy tests failed' }
       - name: Test Genesis Rhod 600 color and notification protocol (no USB writes)
         shell: pwsh
         run: |
