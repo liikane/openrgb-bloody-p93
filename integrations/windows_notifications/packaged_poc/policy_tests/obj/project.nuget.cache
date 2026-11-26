@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "DajCbqs0zoA=",
+  "success": true,
+  "projectFilePath": "/home/runner/work/openrgb-bloody-p93/openrgb-bloody-p93/integrations/windows_notifications/packaged_poc/policy_tests/NotificationPolicyTests.csproj",
+  "expectedPackageFiles": [
+    "/tmp/codeql-scratch-97608a62854aa871/dbs/csharp/working/packages/microsoft.netcore.app.ref/8.0.34/microsoft.netcore.app.ref.8.0.34.nupkg.sha512",
+    "/tmp/codeql-scratch-97608a62854aa871/dbs/csharp/working/packages/microsoft.aspnetcore.app.ref/8.0.34/microsoft.aspnetcore.app.ref.8.0.34.nupkg.sha512",
+    "/tmp/codeql-scratch-97608a62854aa871/dbs/csharp/working/packages/microsoft.netcore.app.host.linux-x64/8.0.34/microsoft.netcore.app.host.linux-x64.8.0.34.nupkg.sha512"
+  ],
+  "logs": []
+}
