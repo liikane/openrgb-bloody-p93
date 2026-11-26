@@ -1,0 +1,25 @@
+<Page
+    x:Class="WindowsNotificationPoc.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:WindowsNotificationPoc">
+    <ScrollViewer>
+        <StackPanel Margin="24" Spacing="12">
+            <TextBlock Text="Windows notification listener proof of concept"
+                       Style="{StaticResource TitleTextBlockStyle}" />
+            <TextBlock Text="Disabled by default. Only app identity and notification ID are read; notification content is never accessed." />
+            <TextBlock x:Name="StatusText" Text="Permission not requested. Forwarding disabled." />
+            <Button x:Name="RequestAccessButton"
+                    Content="Request notification access"
+                    Click="RequestAccessButton_Click" />
+            <TextBlock Text="Allowlisted apps (this session only)" Style="{StaticResource SubtitleTextBlockStyle}" />
+            <TextBlock Text="Apps appear here only after they have an active Toast. Nothing is selected by default." />
+            <StackPanel x:Name="AppChoices" Spacing="8" />
+            <Button x:Name="ApplyRulesButton" Content="Apply allowlist" IsEnabled="False"
+                    Click="ApplyRulesButton_Click" />
+            <Button x:Name="ForwardingButton" Content="Enable event forwarding"
+                    IsEnabled="False" Click="ForwardingButton_Click" />
+            <TextBlock Text="Event classes are configured per app. No notification text, title, sender, or other content is classified." />
+        </StackPanel>
+    </ScrollViewer>
+</Page>
