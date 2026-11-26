@@ -43,6 +43,22 @@ Notifications may contain personal email subjects, names, calendar details, one-
 
 Users must not assume all Windows events appear as Toast notifications (some are native dialogs, tray changes, and application-only alerts). ChatGPT web completion is **not automatically available** through the notification API unless a separate desktop application emits a Windows Toast event.
 
+## Packaged Windows proof of concept
+
+[`integrations/windows_notifications/packaged_poc`](../integrations/windows_notifications/packaged_poc) is a minimal UWP package with the `userNotificationListener` capability. It does not start listening or ask for permission at launch. The user must click **Request notification access**; after consent, the app seeds a startup baseline and presents app identities seen in current Toast metadata. Its allowlist and event-kind rules are empty and kept in memory only. Forwarding has a separate, explicit **Enable event forwarding** action.
+
+To build and run it on a Windows 10/11 development machine:
+
+1. Install Visual Studio 2022 with the **Universal Windows Platform development** workload and Windows 10 SDK 10.0.19041.0 or later.
+2. Open `integrations/windows_notifications/packaged_poc/WindowsNotificationPoc.csproj`, restore packages, and deploy from Visual Studio. For a distributable MSIX, create a local test signing certificate matching the manifest publisher (`CN=Liikane`) and sign the package; do not install a certificate or package unless you trust it.
+3. Launch the app. Click **Request notification access** and respond to the Windows consent prompt. To revoke access later, use Windows Settings > Privacy & security > Notifications.
+4. With access granted, select desired app identities and event classes, click **Apply allowlist**, then separately click **Enable event forwarding**. Disable forwarding or close the app to stop it. No hardware is needed to build or exercise the UI.
+5. To receive effects, separately enable the P93 plugin's local command receiver. The app attempts to send only `P93:<kind>` to `127.0.0.1:45893`. UWP loopback network isolation can prevent a packaged app from reaching a desktop plugin; this prototype does not grant broad network capabilities or configure a loopback exemption. That transport limitation has not been validated on Windows.
+
+The listener reads only `UserNotification.AppInfo.Id` and `UserNotification.Id`; it never inspects notification content or writes identities, IDs, event history, or rules to disk. The app's C# `NotificationPolicy` is a packaged adapter implementation of the same startup-baseline, explicit allowlist, in-memory deduplication, and event-only contract tested by the Python `NotificationPolicy` below. Both senders are disabled by default, and the C# sender hard-codes the loopback destination. No internet endpoint, telemetry, service, keyboard hook, or hardware write is implemented.
+
+The repository's Windows workflow runs synthetic policy tests and attempts to compile/package the UWP PoC. No real notification access, consent UI, signed MSIX installation, loopback exemption/transport, P93 plugin behavior, or P93 hardware behavior has been tested by this cloud agent. Windows Toast and hardware validation remain separate manual checks.
+
 ## Offline policy core
 
 [`integrations/windows_notifications/core.py`](../integrations/windows_notifications/core.py) is a standard-library-only foundation for the shared notification service, **not a listener, tray app, or installable package**. Nothing runs automatically or changes the plugin. Run its synthetic tests with:
@@ -57,10 +73,10 @@ Call `initialize` once with a complete current Toast snapshot before processing 
 
 `P93Sender` starts disabled. A future UI must set it enabled only after explicit user opt-in and disable it on pause or revoke. It sends only `P93:<kind>` as ASCII to `127.0.0.1:45893`; no other destination is configurable. UDP does **not** reveal whether the plugin receiver is enabled or whether the device reacted. The user must separately enable the plugin receiver; a successful send is not a delivery confirmation. This sender has no queue or retry.
 
-Still required before this is a Windows notification bridge:
+Still required before this is a verified Windows notification bridge:
 
-- Package an app with identity and `userNotificationListener` capability, explain the privacy implications, request access on the UI thread, and provide pause, allowlist, and revocation controls. Verify subscription in the packaged app; unpackaged `NotificationChanged` is unreliable ([Windows App SDK #6172](https://github.com/microsoft/WindowsAppSDK/issues/6172)).
-- On Windows 11, verify permission denial/revocation, startup suppression and allowlisting with real Toasts, then verify an allowed Toast causes the selected P93 effect and a disallowed app causes none. No real Toast listener or P93 hardware behavior has been validated by these synthetic tests.
+- Build and deploy the packaged prototype on Windows with the required UWP workload; verify consent, denial/revocation, notification subscription, and AppContainer loopback behavior.
+- On Windows 11, verify startup suppression and allowlisting with synthetic or real Toasts, then separately verify an allowed event reaches the P93 plugin. No real Toast listener or P93 hardware behavior has been validated by these synthetic tests.
 
 ## Current status
 
@@ -68,8 +84,8 @@ Still required before this is a Windows notification bridge:
 - [x] Standalone PowerShell sender available in repository.
 - [x] Bridge architecture and privacy constraints documented.
 - [x] Offline event policy and opt-in loopback sender covered by synthetic tests.
-- [ ] Build and test separate Windows tray bridge with supported app identity/manifest.
-- [ ] Implement Windows notification access permission and allowlist UI.
+- [x] Add a separate packaged Windows proof-of-concept with listener capability, explicit consent UI, and empty in-memory allowlist.
+- [x] Add metadata-only event policy and loopback sender in the packaged prototype with synthetic tests.
 - [ ] Verify notification deduplication, filtering and classification on Windows 11.
 - [ ] Demonstrate end-to-end Windows Toast -> local P93 RGB effect.
 

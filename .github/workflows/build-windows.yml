@@ -23,6 +23,13 @@ jobs:
         run: |
           python integrations/windows_notifications/test_core.py
           if ($LASTEXITCODE -ne 0) { throw 'Windows notification policy tests failed' }
+          dotnet run --configuration Release --project integrations/windows_notifications/packaged_poc/policy_tests/NotificationPolicyTests.csproj
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged POC policy tests failed' }
+      - name: Build packaged Windows notification POC
+        shell: pwsh
+        run: |
+          msbuild integrations/windows_notifications/packaged_poc/WindowsNotificationPoc.csproj /restore /p:Configuration=Release /p:Platform=x64 /p:AppxPackageSigningEnabled=false /p:AppxBundle=Never
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged notification POC build failed' }
       - name: Test Genesis Rhod 600 color and notification protocol (no USB writes)
         shell: pwsh
         run: |
